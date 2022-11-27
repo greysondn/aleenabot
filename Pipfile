@@ -4,8 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+"discord.py" = "*"
+peewee = "*"
+peewee-aio = {extras = ["aiomysql", "aiopg", "aiosqlite"], version = "*"}
+requests = "*"
 
 [dev-packages]
+aleenabot = {editable = true, path = "."}
 
 [requires]
 python_version = "3.10"
