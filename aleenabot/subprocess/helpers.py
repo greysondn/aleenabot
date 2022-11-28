@@ -104,6 +104,7 @@ class ProcessWrapper:
 
 
     async def mainProcess(self):
+        # ignite process like a lunatic
         process = await aio.create_subprocess_shell(
             "",
             stdin =  aio.subprocess.PIPE,
@@ -111,38 +112,46 @@ class ProcessWrapper:
             stderr = aio.subprocess.PIPE
         )
         
+        # set process so we can access std streams
         self.process = process
         
-        self.running["main"] = True
-        self.running["err"] = True
-        self.running["out"] = True
-        self.running["in"] = True
+        # tell everything else we're running
+        for key in list(self.running.keys()):
+            self.running[key] = True
 
     
     async def inBoxToQueue(self):
         # wait for this to officially start
-        while (not self.running["in"]):
+        while (not self.running["inBoxToQueue"]):
             await aio.sleep(1)
-        
+
         # okay, it's running
-        while self.running["in"]:
+        while self.running["inBoxToQueue"]:
             expect:Any = await self.inbox.get()   # unresolved coroutine or tuple, I think
             incoming:InterProcessMail = expect[1] # fix type, trim priority anyway
     
     async def inQueueToStd(self):
         # TODO: write docs about how this is meant to override.
-        pass
+
+        # wait for this to officially start
+        while (not self.running["inQueueToStd"]):
+            await aio.sleep(1)
         
+        # okay, it's running
+        while self.running["inQueueToStd"]:
+            pass
+
+    
     
     async def outStdToQueue(self):
         # TODO: Enable poisoning...?
         
         # wait for this to officially start
-        while (not self.running["out"]):
+        while (not self.running["outStdToQueue"]):
             await aio.sleep(1)
-        
+
         # okay, it's running
-        while self.running["out"]:
+        while self.running["outStdToQueue"]:
             latest:bytes = await self.process.stdout.readline()
             decoded:str = latest.decode()
             
@@ -155,9 +164,9 @@ class ProcessWrapper:
         # meanwhile, hae a sort of template for simple std-to-main-output
         
         # wait for this to officially start
-        while (not self.running["out"]):
+        while (not self.running["outQueueToBox"]):
             await aio.sleep(1)
-            
+
         msgTmpl =   InterProcessMail(
                         sender = self.name,
                         receiver = "main",
@@ -165,15 +174,26 @@ class ProcessWrapper:
                         message = "task add payload"
                     )
         
+        # okay, it's running
+        while self.running["outQueueToBox"]:
+            pass
+        
     async def errStdToQueue(self):
         # wait for this to officially start
-        while (not self.running["err"]):
+        while (not self.running["errStdToQueue"]):
             await aio.sleep(1)
         
         # okay, it's running
-        while self.running["err"]:
+        while self.running["errStdToQueue"]:
             pass
 
     async def errQueueToBox(self):
         # TODO: write docs about how this is meant to override.
-        pass
+        
+        # wait for this to officially start
+        while (not self.running["errQueueToBox"]):
+            await aio.sleep(1)
+        
+        # okay, it's running
+        while self.running["errQueueToBox"]:
+            pass
