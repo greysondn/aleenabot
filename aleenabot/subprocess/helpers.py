@@ -106,7 +106,7 @@ class ProcessWrapper:
     async def mainProcess(self):
         # ignite process like a lunatic
         process = await aio.create_subprocess_shell(
-            "",
+            self.command,
             stdin =  aio.subprocess.PIPE,
             stdout = aio.subprocess.PIPE,
             stderr = aio.subprocess.PIPE
