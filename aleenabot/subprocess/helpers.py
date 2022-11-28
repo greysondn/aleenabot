@@ -140,8 +140,6 @@ class ProcessWrapper:
         # okay, it's running
         while self.running["inQueueToStd"]:
             pass
-
-    
     
     async def outStdToQueue(self):
         # TODO: Enable poisoning...?
