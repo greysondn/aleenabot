@@ -165,16 +165,22 @@ class ProcessWrapper:
         while (not self.running["outQueueToBox"]):
             await aio.sleep(1)
 
+        # template out messages
         msgTmpl =   InterProcessMail(
                         sender = self.name,
                         receiver = "main",
                         type_ = InterProcessMailType.STDOUT,
-                        message = "task add payload"
                     )
         
         # okay, it's running
         while self.running["outQueueToBox"]:
-            pass
+            swp = await self.stdout.get()
+            outgoing:str = swp[1] # fix type, trim
+            
+            outMsg = msgTmpl.clone()
+            outMsg.message = outgoing
+            
+            await self.outbox.put(outMsg.toPriorityQueue)
         
     async def errStdToQueue(self):
         # wait for this to officially start
