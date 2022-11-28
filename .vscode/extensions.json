@@ -6,7 +6,6 @@
         "kevinrose.vsc-python-indent",
         "donjayamanne.python-environment-manager",
         "njpwerner.autodocstring",
-        "eamodio.gitlens",
         "michelemelluso.gitignore"
     ]
 }
