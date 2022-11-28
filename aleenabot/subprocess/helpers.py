@@ -2,7 +2,6 @@ import asyncio as aio
 from enum import Enum
 from typing import Any, Awaitable, Optional
 
-
 class InterProcessMailType(Enum):
     NULL   = 0,
     STDIN  = 1,
@@ -37,6 +36,10 @@ class InterProcessMail:
             payload  = self.payload
         )
 
+    def toPriorityQueue(self) -> tuple[int, "InterProcessMail"]:
+        return (self.priority, self)
+
+
 class ProcessWrapper:
     def __init__(self):
         self.name:str    = "Unknown"
@@ -47,12 +50,25 @@ class ProcessWrapper:
         self.stdin       = aio.PriorityQueue()
         self.stdout      = aio.PriorityQueue()
         self.stderr      = aio.PriorityQueue()
-        self.process:Optional[aio.subprocess.Process] = None # uhhh?
+        self.process:Any = None # uhhh?
         self.running = {
-            "in"  : False,
-            "out" : False,
-            "err" : False,
-            "main": False
+            "mainProcess"   : False,
+            "inBoxToQueue"  : False,
+            "inQueueToStd"  : False,
+            "outStdToQueue" : False,
+            "outQueueToBox" : False,
+            "errStdToQueue" : False,
+            "errQueueToBox" : False,
+        }
+        
+        self.poison = {
+            "mainProcess"   : False,
+            "inBoxToQueue"  : False,
+            "inQueueToStd"  : False,
+            "outStdToQueue" : False,
+            "outQueueToBox" : False,
+            "errStdToQueue" : False,
+            "errQueueToBox" : False,
         }
 
     async def main(self):
@@ -65,19 +81,29 @@ class ProcessWrapper:
                         type_ = InterProcessMailType.STDOUT,
                         message = "task add payload"
                     )
-        
-        mainTask = aio.create_task(self.run())
-        inTask   = aio.create_task(self.input_loop())
-        outTask  = aio.create_task(self.output_loop())
-        errTask  = aio.create_task(self.err_loop())
+
+
+        # let's just do it as a list, shall we?
+        tasks = [
+            aio.create_task(self.mainProcess()),
+            aio.create_task(self.inBoxToQueue()),
+            aio.create_task(self.inQueueToStd()),
+            aio.create_task(self.outStdToQueue()),
+            aio.create_task(self.outQueueToBox()),
+            aio.create_task(self.errStdToQueue()),
+            aio.create_task(self.errQueueToBox()),
+        ]
         
         # gets weird right about now, I think
-        
-        
-        
-        
+        for task in tasks:
+            msgSwp = msgTmpl.clone()
+            msgSwp.payload = task
+            await self.outbox.put(msgSwp.toPriorityQueue())
+            
+        # I think that's it?
 
-    async def run(self):
+
+    async def mainProcess(self):
         process = await aio.create_subprocess_shell(
             "",
             stdin =  aio.subprocess.PIPE,
@@ -93,7 +119,7 @@ class ProcessWrapper:
         self.running["in"] = True
 
     
-    async def input_loop(self):
+    async def inBoxToQueue(self):
         # wait for this to officially start
         while (not self.running["in"]):
             await aio.sleep(1)
@@ -102,31 +128,44 @@ class ProcessWrapper:
         while self.running["in"]:
             expect:Any = await self.inbox.get()   # unresolved coroutine or tuple, I think
             incoming:InterProcessMail = expect[1] # fix type, trim priority anyway
-            
-            if (incoming.type == InterProcessMailType.KILL):
-                pass
-            else:
-                self.handleInput(incoming)
     
-    def handleInput(self, incoming:InterProcessMail):
+    async def inQueueToStd(self):
         # TODO: write docs about how this is meant to override.
         pass
         
     
-    async def output_loop(self):
+    async def outStdToQueue(self):
+        # TODO: Enable poisoning...?
+        
         # wait for this to officially start
         while (not self.running["out"]):
             await aio.sleep(1)
         
         # okay, it's running
         while self.running["out"]:
-            latest:str = await self.process.stdout.readline()
+            latest:bytes = await self.process.stdout.readline()
+            decoded:str = latest.decode()
+            
+            # and now put it on the queue
+            await self.stdout.put((1000, decoded))
         
-    def handleOutput(self):
+    async def outQueueToBox(self):
         # TODO: write docs about how this is meant to override.
-        pass
         
-    async def err_loop(self):
+        # meanwhile, hae a sort of template for simple std-to-main-output
+        
+        # wait for this to officially start
+        while (not self.running["out"]):
+            await aio.sleep(1)
+            
+        msgTmpl =   InterProcessMail(
+                        sender = self.name,
+                        receiver = "main",
+                        type_ = InterProcessMailType.STDOUT,
+                        message = "task add payload"
+                    )
+        
+    async def errStdToQueue(self):
         # wait for this to officially start
         while (not self.running["err"]):
             await aio.sleep(1)
@@ -135,6 +174,6 @@ class ProcessWrapper:
         while self.running["err"]:
             pass
 
-    def handle_err(self):
+    async def errQueueToBox(self):
         # TODO: write docs about how this is meant to override.
         pass
