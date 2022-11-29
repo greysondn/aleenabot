@@ -39,11 +39,10 @@ class InterProcessMail:
     def toPriorityQueue(self) -> tuple[int, "InterProcessMail"]:
         return (self.priority, self)
 
-
 class ProcessWrapper:
-    def __init__(self):
-        self.name:str    = "Unknown"
-        self.command:str = ""
+    def __init__(self, name:str="Unknown", command:str="unknown"):
+        self.name:str    = name
+        self.command:str = command
         self.inbox       = aio.PriorityQueue()
         self.outbox      = aio.PriorityQueue()
         self.errbox      = aio.PriorityQueue()
@@ -71,16 +70,31 @@ class ProcessWrapper:
             "errQueueToBox" : False,
         }
 
+    async def message(
+                        self, 
+                        receiver:str = "main",
+                        type_:InterProcessMailType = InterProcessMailType.STDOUT,
+                        priority:int = 1000,
+                        message:str = "Empty message.",
+                        payload:Any = None
+                    ):
+        # so we make the message
+        msg =   InterProcessMail(
+                        sender = self.name,
+                        receiver = receiver,
+                        type_ = type_,
+                        priority = priority,
+                        message = message,
+                        payload = payload
+                    )
+        # and then huck it into the outbox
+        await self.outbox.put(msg.toPriorityQueue())
+
     async def main(self):
         #
         # TODO: python 3.11 - rewrite with a taskgroup
         # this is pretty epic, really, though
-        msgTmpl =   InterProcessMail(
-                        sender = self.name,
-                        receiver = "main",
-                        type_ = InterProcessMailType.STDOUT,
-                        message = "task add payload"
-                    )
+
 
 
         # let's just do it as a list, shall we?
@@ -96,9 +110,11 @@ class ProcessWrapper:
         
         # gets weird right about now, I think
         for task in tasks:
-            msgSwp = msgTmpl.clone()
-            msgSwp.payload = task
-            await self.outbox.put(msgSwp.toPriorityQueue())
+            await self.message(
+                receiver = "main",
+                message = "task add payload",
+                payload = task
+            )
             
         # I think that's it?
 
@@ -202,9 +218,15 @@ class ProcessWrapper:
         while self.running["errQueueToBox"]:
             pass
         
-class Manager():
-    def __init__(self):
+class Manager(ProcessWrapper):
+    def __init__(self, name):
+        # parent, and fixing some stuff up
+        super().__init__()
+        # expect only manager to be main
+        self.name = "main"
+        
         self.tasks:set[aio.Task] = set()
+        self.children:set["ProcessWrapper"]    = set()
         
     async def addTask(self, task:aio.Task):
         self.tasks.add(task)
