@@ -194,7 +194,7 @@ class CoroutineWrapper:
         
         # okay, it's running
         while self.running["outQueueToBox"]:
-            msg = (await self.outbox.get())[1]
+            msg = (await self.stdout.get())[1]
             await self.message(message=msg)
         
     async def errStdToQueue(self):
