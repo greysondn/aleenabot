@@ -178,6 +178,7 @@ class CoroutineWrapper:
 
         # okay, it's running
         while self.running["outStdToQueue"]:
+            # FIXME: WOOPS
             swp = await self.stdout.get()
             outgoing:str = "print" + swp[1] # fix type, trim
             
@@ -226,9 +227,6 @@ class ProcessWrapper(CoroutineWrapper):
         self.command:str = command
         self.process:Any = None # uhhh?
         
-        self.running["childrenOutboxHandler"] = False
-        self.poison["childrenOutboxHndler"]   = False
-        
     async def mainProcess(self):
         # ignite process like a lunatic
         process = await aio.create_subprocess_shell(
@@ -256,11 +254,15 @@ class ProcessWrapper(CoroutineWrapper):
 
         # okay, it's running
         while self.running["outStdToQueue"]:
+            # this can literally go so fast nothing else gets a chance to
+            # run. That was my hard lesson for today.
+            await aio.sleep(1)
             latest:bytes = await self.process.stdout.readline()
-            decoded:str = latest.decode()
+            if (len(latest) > 0):
+                decoded:str = latest.decode()
 
-            # and now put it on the queue
-            await self.stdout.put((1000, decoded))
+                # and now put it on the queue
+                await self.stdout.put((1000, decoded))
 
         
 class Manager(CoroutineWrapper):
@@ -271,6 +273,16 @@ class Manager(CoroutineWrapper):
         self.tasks:set[aio.Task] = set()
         self.children:dict[str, "CoroutineWrapper"] = {}
         self.commandParser:"ManagerCommandParser" = ManagerCommandParser()
+
+        self.running["childrenOutboxHandler"] = False
+        self.poison["childrenOutboxHandler"]   = False
+    
+    async def mainProcess(self):
+        # Parent
+        await super().mainProcess()
+        
+        # remainders
+        self.running["childrenOutboxHandler"] = True
     
     async def addTask(self, task:aio.Task):
         self.tasks.add(task)
@@ -301,7 +313,7 @@ class Manager(CoroutineWrapper):
     
     async def inBoxToQueue(self):
         # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "inboxToQueue", True)
+        await waitUntilDictEntryEquals(self.running, "inBoxToQueue", True)
 
         # okay, it's running
         while self.running["inBoxToQueue"]:
