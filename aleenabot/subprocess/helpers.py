@@ -91,7 +91,6 @@ class CoroutineWrapper:
         if (msg.receiver == self.name):
             await self.inbox.put(msg.toPriorityQueue())
         else:
-            print(msg.toPriorityQueue())
             await self.outbox.put(msg.toPriorityQueue())
 
     async def message(
@@ -180,7 +179,7 @@ class CoroutineWrapper:
         # okay, it's running
         while self.running["outStdToQueue"]:
             swp = await self.stdout.get()
-            outgoing:str = "print " + swp[1] # fix type, trim
+            outgoing:str = "print" + swp[1] # fix type, trim
             
             await self.stdout.put((1000, outgoing))
         

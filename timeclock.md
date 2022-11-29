@@ -28,7 +28,8 @@ Last updated 29 Nov 2022, 01:07
 
 - `01:17` //_Let's start_
 - `01:18` Try to get helpers good enough to run Hello World
-- `03:17` //_Set up ko-fi account and sleep_
+- `03:17` //_Set up ko-fi account_
+- `04:17` Try to get helpers good enough to run Hello World
 
 ## Totals
 
