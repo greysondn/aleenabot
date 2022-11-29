@@ -72,4 +72,6 @@ approximately
 
 Per hour to all possible donors.
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q710S8R)
+
 Last updated 29 Nov 2022, 01:07
