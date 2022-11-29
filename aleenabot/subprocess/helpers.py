@@ -40,16 +40,15 @@ class InterProcessMail:
         return (self.priority, self)
 
 class CoroutineWrapper:
-    def __init__(self, name:str="Unknown", command:str="unknown"):
+    def __init__(self, name:str="Unknown"):
         self.name:str    = name
-        self.command:str = command
         self.inbox       = aio.PriorityQueue()
         self.outbox      = aio.PriorityQueue()
         self.errbox      = aio.PriorityQueue()
         self.stdin       = aio.PriorityQueue()
         self.stdout      = aio.PriorityQueue()
         self.stderr      = aio.PriorityQueue()
-        self.process:Any = None # uhhh?
+
         self.running = {
             "mainProcess"   : False,
             "inBoxToQueue"  : False,
@@ -90,6 +89,15 @@ class CoroutineWrapper:
         # and then huck it into the outbox
         await self.outbox.put(msg.toPriorityQueue())
 
+    async def createTaskAndMessageMain(self, coro):
+        task = aio.create_task(coro)
+        
+        await self.message(
+            receiver = "main",
+            message = "task add payload",
+            payload = task
+        )
+
     async def main(self):
         #
         # TODO: python 3.11 - rewrite with a taskgroup
@@ -99,39 +107,26 @@ class CoroutineWrapper:
 
         # let's just do it as a list, shall we?
         tasks = [
-            aio.create_task(self.mainProcess()),
-            aio.create_task(self.inBoxToQueue()),
-            aio.create_task(self.inQueueToStd()),
-            aio.create_task(self.outStdToQueue()),
-            aio.create_task(self.outQueueToBox()),
-            aio.create_task(self.errStdToQueue()),
-            aio.create_task(self.errQueueToBox()),
+            self.mainProcess(),
+            self.inBoxToQueue(),
+            self.inQueueToStd(),
+            self.outStdToQueue(),
+            self.outQueueToBox(),
+            self.errStdToQueue(),
+            self.errQueueToBox(),
         ]
+        
+        
         
         # gets weird right about now, I think
         for task in tasks:
-            await self.message(
-                receiver = "main",
-                message = "task add payload",
-                payload = task
-            )
+            await self.createTaskAndMessageMain(task)
             
         # I think that's it?
 
 
     async def mainProcess(self):
-        # ignite process like a lunatic
-        process = await aio.create_subprocess_shell(
-            self.command,
-            stdin =  aio.subprocess.PIPE,
-            stdout = aio.subprocess.PIPE,
-            stderr = aio.subprocess.PIPE
-        )
-        
-        # set process so we can access std streams
-        self.process = process
-        
-        # tell everything else we're running
+        # tell everything we're running
         for key in list(self.running.keys()):
             self.running[key] = True
 
@@ -166,11 +161,7 @@ class CoroutineWrapper:
 
         # okay, it's running
         while self.running["outStdToQueue"]:
-            latest:bytes = await self.process.stdout.readline()
-            decoded:str = latest.decode()
-            
-            # and now put it on the queue
-            await self.stdout.put((1000, decoded))
+            pass
         
     async def outQueueToBox(self):
         # TODO: write docs about how this is meant to override.
@@ -219,8 +210,36 @@ class CoroutineWrapper:
             pass
 
 class ProcessWrapper(CoroutineWrapper):
-    pass
+    def __init__(self, name:str = "Unknown", command:str=""):
+        # parent constructor
+        super().__init__(name)
         
+        # unique to this object
+        self.command:str = command
+        self.process:Any = None # uhhh?
+        
+    async def mainProcess(self):
+        # ignite process like a lunatic
+        process = await aio.create_subprocess_shell(
+            self.command,
+            stdin =  aio.subprocess.PIPE,
+            stdout = aio.subprocess.PIPE,
+            stderr = aio.subprocess.PIPE
+        )
+        
+        # set process so we can access std streams
+        self.process = process
+        
+        # Parent
+        await super().mainProcess()
+        
+    # for now the only overridden one was this one
+    async def outStdToQueue(self):
+        latest:bytes = await self.process.stdout.readline()
+        decoded:str = latest.decode()
+        
+        # and now put it on the queue
+        await self.stdout.put((1000, decoded))
         
 class Manager(CoroutineWrapper):
     def __init__(self, name):
