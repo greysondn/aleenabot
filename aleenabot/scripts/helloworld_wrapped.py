@@ -7,7 +7,7 @@ class Main(hlp.Manager):
         # call parent constructor
         super().__init__("main")
     
-    async def checkDead(self):
+    def checkDead(self):
         return False
         
     async def main(self):
