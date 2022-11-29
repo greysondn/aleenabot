@@ -103,8 +103,6 @@ class CoroutineWrapper:
         # TODO: python 3.11 - rewrite with a taskgroup
         # this is pretty epic, really, though
 
-
-
         # let's just do it as a list, shall we?
         tasks = [
             self.mainProcess(),
@@ -115,8 +113,6 @@ class CoroutineWrapper:
             self.errStdToQueue(),
             self.errQueueToBox(),
         ]
-        
-        
         
         # gets weird right about now, I think
         for task in tasks:
