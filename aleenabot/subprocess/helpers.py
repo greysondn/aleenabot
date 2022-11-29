@@ -167,23 +167,13 @@ class CoroutineWrapper:
         # wait for this to officially start
         while (not self.running["outQueueToBox"]):
             await aio.sleep(1)
-
-        # template out messages
-        msgTmpl =   InterProcessMail(
-                        sender = self.name,
-                        receiver = "main",
-                        type_ = InterProcessMailType.STDOUT,
-                    )
         
         # okay, it's running
         while self.running["outQueueToBox"]:
             swp = await self.stdout.get()
             outgoing:str = swp[1] # fix type, trim
             
-            outMsg = msgTmpl.clone()
-            outMsg.message = outgoing
-            
-            await self.outbox.put(outMsg.toPriorityQueue)
+            await self.message(message=outgoing)
         
     async def errStdToQueue(self):
         # wait for this to officially start
