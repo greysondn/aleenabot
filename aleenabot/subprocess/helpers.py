@@ -382,5 +382,7 @@ class ManagerCommandParser:
             
             if (swp == "task"):
                 await self.task(host, commands, msg)
+            elif (swp == "print"):
+                await self.print(host, commands, msg)
             else:
                 await self.special_error(host, commands, msg, "unknown arguments")
