@@ -25,3 +25,10 @@ class Main(hlp.Manager):
         
         # and now I wait for that to die?
         await hlp.waitUntilFunctionTrue(self.checkDead)
+
+async def aioMain():
+    m = Main()
+    await m.main()
+        
+if (__name__ == "__main__"):
+    aio.run(aioMain())
