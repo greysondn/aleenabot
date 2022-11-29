@@ -258,9 +258,7 @@ class ProcessWrapper(CoroutineWrapper):
         while self.running["outStdToQueue"]:
             latest:bytes = await self.process.stdout.readline()
             decoded:str = latest.decode()
-        
-            print(decoded)
-        
+
             # and now put it on the queue
             await self.stdout.put((1000, decoded))
 
