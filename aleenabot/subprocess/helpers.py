@@ -1,6 +1,7 @@
 import asyncio as aio
+from collections import deque
 from enum import Enum
-from typing import Any, Awaitable, Optional
+from typing import Any, Awaitable, cast, Optional
 
 async def waitUntilFunctionTrue(function_, pollIntervalInSeconds:float = 1.0):
     while (function_() != True):
@@ -217,6 +218,9 @@ class ProcessWrapper(CoroutineWrapper):
         self.command:str = command
         self.process:Any = None # uhhh?
         
+        self.running["childrenOutboxHandler"] = False
+        self.poison["childrenOutboxHndler"]   = False
+        
     async def mainProcess(self):
         # ignite process like a lunatic
         process = await aio.create_subprocess_shell(
@@ -232,6 +236,9 @@ class ProcessWrapper(CoroutineWrapper):
         # Parent
         await super().mainProcess()
         
+        # remainders
+        self.running["childrenOutboxHandler"] = True
+        
     # for now the only overridden one was this one
     async def outStdToQueue(self):
         latest:bytes = await self.process.stdout.readline()
@@ -246,9 +253,116 @@ class Manager(CoroutineWrapper):
         super().__init__(name)
         
         self.tasks:set[aio.Task] = set()
-        self.children:dict[str, "ProcessWrapper"] = {}
-        
+        self.children:dict[str, "CoroutineWrapper"] = {}
+        self.commandParser:"ManagerCommandParser" = ManagerCommandParser()
+    
     async def addTask(self, task:aio.Task):
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
 
+    async def addChild(self, child:CoroutineWrapper):
+        self.children[child.name] = child
+    
+    async def childrenOutboxHandler(self):
+        # TODO: write docs about how this is meant to override.
+        # meanwhile, this is basically a template
+        
+        # TODO: Implement poison pilling
+        
+        # wait for this to officially start
+        await waitUntilDictEntryEquals(self.running, "childrenOutboxHandler", True)
+        
+        # okay, it's running
+        while self.running["childrenOutboxHandler"]:
+            # create a list of current children this loop
+            childList = list(self.children.values())
+            
+            for child in childList:
+                # make sure it's still alive, basically
+                if (not child.outbox.empty()):
+                    msg:InterProcessMail = (await child.outbox.get())[1]
+                    await self.inbox.put(msg.toPriorityQueue)
+    
+    async def inBoxToQueue(self):
+        # wait for this to officially start
+        await waitUntilDictEntryEquals(self.running, "inboxToQueue", True)
+
+        # okay, it's running
+        while self.running["inBoxToQueue"]:
+            incoming:InterProcessMail = cast(InterProcessMail, (await self.inbox.get())[1])
+            
+            if (incoming.receiver == self.name):
+                # handle individual commands here
+                commands:deque[str] = deque(incoming.message.split())
+                await self.commandParser.exec(self, commands, incoming)
+
+class ManagerCommandParser:
+    def __init__(self):
+        pass
+    
+    # just an error handler, mostly
+    async def special_error(self, host:Manager, commands:deque[str], msg:InterProcessMail, err:str):
+        pass
+    
+    # check too many or not enough args
+    async def checkMinArgs(self, host:Manager, commands:deque[str], msg:InterProcessMail, count:int) -> bool:
+        ret:bool = False
+        
+        if (len(commands) >= count):
+            ret = True
+        else:
+            ret = False
+            await self.special_error(host, commands, msg, "not enough arguments")
+        
+        return ret
+    
+    async def checkMaxArgs(self, host:Manager, commands:deque[str], msg:InterProcessMail, count:int) -> bool:
+        ret:bool = False
+        
+        if (len(commands) <= count):
+            ret = True
+        else:
+            ret = False
+            await self.special_error(host, commands, msg, "too many arguments")
+        
+        return ret
+    
+    # task
+    async def task_add_payload(self, host:Manager, commands:deque[str], msg:InterProcessMail):
+        if (await self.checkMaxArgs(host, commands, msg, 0)):
+            # add it
+            await host.addTask(msg.payload)
+            
+    
+    async def task_add(self, host:Manager, commands:deque[str], msg:InterProcessMail):
+        if (await self.checkMinArgs(host, commands, msg, 1)):
+            swp = commands.popleft()
+            
+            if (swp == "payload"):
+                await self.task_add_payload(host, commands, msg)
+            else:
+                await self.special_error(host, commands, msg, "unknown arguments")
+    
+    async def task(self, host:Manager, commands:deque[str], msg:InterProcessMail):
+        if (await self.checkMinArgs(host, commands, msg, 1)):
+            swp = commands.popleft()
+            
+            if (swp == "add"):
+                await self.task_add(host, commands, msg)
+            else:
+                await self.special_error(host, commands, msg, "unknown arguments")
+
+    # output
+    async def print(self, host:Manager, commans:deque[str], msg:InterProcessMail):
+        # slightly special handling
+        await host.stdout.put((1000, msg.message[6:]))
+
+    # finally run
+    async def exec(self, host:Manager, commands:deque[str], msg:InterProcessMail):
+        if (await self.checkMinArgs(host, commands, msg, 1)):
+            swp = commands.popleft()
+            
+            if (swp == "task"):
+                await self.task(host, commands, msg)
+            else:
+                await self.special_error(host, commands, msg, "unknown arguments")
