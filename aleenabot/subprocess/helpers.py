@@ -234,15 +234,15 @@ class ProcessWrapper(CoroutineWrapper):
         await self.stdout.put((1000, decoded))
         
 class Manager(CoroutineWrapper):
-    def __init__(self, name):
+    def __init__(self, name="Unknown"):
         # parent, and fixing some stuff up
-        super().__init__()
-        # expect only manager to be main
-        self.name = "main"
+        super().__init__(name)
         
         self.tasks:set[aio.Task] = set()
-        self.children:set["ProcessWrapper"]    = set()
+        self.children:dict[str, "ProcessWrapper"] = {}
         
     async def addTask(self, task:aio.Task):
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
+
+    
