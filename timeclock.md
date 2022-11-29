@@ -28,6 +28,7 @@ Last updated 29 Nov 2022, 01:07
 
 - `01:17` //_Let's start_
 - `01:18` Try to get helpers good enough to run Hello World
+- `03:17` //_Set up ko-fi account and sleep_
 
 ## Totals
 
@@ -72,6 +73,12 @@ approximately
 
 Per hour to all possible donors.
 
+Last updated 29 Nov 2022, 01:07
+
+## How to Donate
+
+Be sure to mention AleenaBot in your donation message so I know which project to credit it to!
+
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/Q5Q710S8R)
 
-Last updated 29 Nov 2022, 01:07
+Last updated 29 Nov 2022, 04:00
