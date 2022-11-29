@@ -171,7 +171,7 @@ class CoroutineWrapper:
         # okay, it's running
         while self.running["outStdToQueue"]:
             swp = await self.stdout.get()
-            outgoing:str = swp[1] # fix type, trim
+            outgoing:str = "print " + swp[1] # fix type, trim
             
             await self.stdout.put((1000, outgoing))
         
@@ -355,7 +355,7 @@ class ManagerCommandParser:
     # output
     async def print(self, host:Manager, commans:deque[str], msg:InterProcessMail):
         # slightly special handling
-        await host.stdout.put((1000, msg.message[6:]))
+        print(msg.message[6:])
 
     # finally run
     async def exec(self, host:Manager, commands:deque[str], msg:InterProcessMail):
