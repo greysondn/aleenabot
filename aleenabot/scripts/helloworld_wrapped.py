@@ -14,11 +14,14 @@ class Main(hlp.Manager):
         # create main program?
         hwProc:hlp.ProcessWrapper = hlp.ProcessWrapper(
             name = "Hello World!",
-            command = "python3 .\\helloworld.py"
+            command = "python --version"
         )
         
         # add to children
         await self.addChild(hwProc)
+        
+        # just want to sanity check that output
+        await hwProc.message(message = "Message wiring is good.")
         
         # okay um ignite it?
         await hwProc.main()

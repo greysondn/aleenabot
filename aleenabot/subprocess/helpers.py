@@ -167,7 +167,7 @@ class CoroutineWrapper:
         
         # okay, it's running
         while self.running["inQueueToStd"]:
-            pass
+            await aio.sleep(1)
     
     async def outStdToQueue(self):
         # TODO: Enable poisoning...?
@@ -204,7 +204,7 @@ class CoroutineWrapper:
         
         # okay, it's running
         while self.running["errStdToQueue"]:
-            pass
+           await aio.sleep(1) 
 
     async def errQueueToBox(self):
         # TODO: write docs about how this is meant to override.
@@ -215,7 +215,7 @@ class CoroutineWrapper:
         
         # okay, it's running
         while self.running["errQueueToBox"]:
-            pass
+            await aio.sleep(1)
 
 class ProcessWrapper(CoroutineWrapper):
     def __init__(self, name:str = "Unknown", command:str=""):
@@ -249,11 +249,21 @@ class ProcessWrapper(CoroutineWrapper):
         
     # for now the only overridden one was this one
     async def outStdToQueue(self):
-        latest:bytes = await self.process.stdout.readline()
-        decoded:str = latest.decode()
+        # TODO: Enable poisoning...?
         
-        # and now put it on the queue
-        await self.stdout.put((1000, decoded))
+        # wait for this to officially start
+        await waitUntilDictEntryEquals(self.running, "outStdToQueue", True)
+
+        # okay, it's running
+        while self.running["outStdToQueue"]:
+            latest:bytes = await self.process.stdout.readline()
+            decoded:str = latest.decode()
+        
+            print(decoded)
+        
+            # and now put it on the queue
+            await self.stdout.put((1000, decoded))
+
         
 class Manager(CoroutineWrapper):
     def __init__(self, name="Unknown"):
