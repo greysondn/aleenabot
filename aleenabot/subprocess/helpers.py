@@ -39,7 +39,7 @@ class InterProcessMail:
     def toPriorityQueue(self) -> tuple[int, "InterProcessMail"]:
         return (self.priority, self)
 
-class ProcessWrapper:
+class CoroutineWrapper:
     def __init__(self, name:str="Unknown", command:str="unknown"):
         self.name:str    = name
         self.command:str = command
@@ -217,8 +217,12 @@ class ProcessWrapper:
         # okay, it's running
         while self.running["errQueueToBox"]:
             pass
+
+class ProcessWrapper(CoroutineWrapper):
+    pass
         
-class Manager(ProcessWrapper):
+        
+class Manager(CoroutineWrapper):
     def __init__(self, name):
         # parent, and fixing some stuff up
         super().__init__()
