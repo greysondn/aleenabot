@@ -2,6 +2,15 @@ import asyncio as aio
 from enum import Enum
 from typing import Any, Awaitable, Optional
 
+async def waitUntilFunctionTrue(function_, pollIntervalInSeconds:float = 1.0):
+    while (function_() != True):
+        await aio.sleep(pollIntervalInSeconds)
+    return True
+
+async def waitUntilDictEntryEquals(_dict:dict, key:Any, value:Any, pollIntervalInSeconds:float = 1.0):
+    while (_dict[key] != value):
+        await aio.sleep(pollIntervalInSeconds)
+
 class InterProcessMailType(Enum):
     NULL   = 0,
     STDIN  = 1,
@@ -120,17 +129,14 @@ class CoroutineWrapper:
             
         # I think that's it?
 
-
     async def mainProcess(self):
         # tell everything we're running
         for key in list(self.running.keys()):
             self.running[key] = True
 
-    
     async def inBoxToQueue(self):
         # wait for this to officially start
-        while (not self.running["inBoxToQueue"]):
-            await aio.sleep(1)
+        await waitUntilDictEntryEquals(self.running, "inboxToQueue", True)
 
         # okay, it's running
         while self.running["inBoxToQueue"]:
