@@ -20,6 +20,8 @@ class InterProcessMailType(Enum):
     KILL   = 4
 
 class InterProcessMail:
+    count:int = 0
+    
     def __init__(
                     self,
                     sender:str="Unknown",
@@ -29,12 +31,18 @@ class InterProcessMail:
                     message:str = "Message empty.",
                     payload:Any = None
                 ):
+        self.index:int = InterProcessMail.count
+        InterProcessMail.count += 1
+        
         self.sender:str                = sender
         self.receiver:str              = receiver
         self.type:InterProcessMailType = type_
         self.priority:int              = priority
         self.message:str               = message
         self.payload:Any               = payload
+    
+    def __lt__(self, obj:Any):
+        return self.index < obj.index
     
     def clone(self) -> "InterProcessMail":
         return InterProcessMail(
@@ -83,6 +91,7 @@ class CoroutineWrapper:
         if (msg.receiver == self.name):
             await self.inbox.put(msg.toPriorityQueue())
         else:
+            print(msg.toPriorityQueue())
             await self.outbox.put(msg.toPriorityQueue())
 
     async def message(
