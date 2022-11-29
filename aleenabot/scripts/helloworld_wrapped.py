@@ -14,7 +14,7 @@ class Main(hlp.Manager):
         # create main program?
         hwProc:hlp.ProcessWrapper = hlp.ProcessWrapper(
             name = "Hello World!",
-            command = "python --version"
+            command = "python helloworld.py"
         )
         
         # add to children
