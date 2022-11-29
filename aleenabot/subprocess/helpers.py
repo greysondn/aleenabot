@@ -143,7 +143,7 @@ class CoroutineWrapper:
 
     async def inBoxToQueue(self):
         # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "inboxToQueue", True)
+        await waitUntilDictEntryEquals(self.running, "inBoxToQueue", True)
 
         # okay, it's running
         while self.running["inBoxToQueue"]:
