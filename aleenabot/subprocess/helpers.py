@@ -78,6 +78,12 @@ class CoroutineWrapper:
             "errQueueToBox" : False,
         }
 
+    async def guardAgainstLoopback(self, msg:InterProcessMail):
+        if (msg.receiver == self.name):
+            await self.inbox.put(msg.toPriorityQueue())
+        else:
+            await self.outbox.put(msg.toPriorityQueue())
+
     async def message(
                         self, 
                         receiver:str = "main",
@@ -96,7 +102,7 @@ class CoroutineWrapper:
                         payload = payload
                     )
         # and then huck it into the outbox
-        await self.outbox.put(msg.toPriorityQueue())
+        await self.guardAgainstLoopback(msg)
 
     async def createTaskAndMessageMain(self, coro):
         task = aio.create_task(coro)
@@ -163,7 +169,10 @@ class CoroutineWrapper:
 
         # okay, it's running
         while self.running["outStdToQueue"]:
-            pass
+            swp = await self.stdout.get()
+            outgoing:str = swp[1] # fix type, trim
+            
+            await self.stdout.put((1000, outgoing))
         
     async def outQueueToBox(self):
         # TODO: write docs about how this is meant to override.
@@ -176,10 +185,8 @@ class CoroutineWrapper:
         
         # okay, it's running
         while self.running["outQueueToBox"]:
-            swp = await self.stdout.get()
-            outgoing:str = swp[1] # fix type, trim
-            
-            await self.message(message=outgoing)
+            msg = (await self.outbox.get())[1]
+            await self.message(message=msg)
         
     async def errStdToQueue(self):
         # wait for this to officially start
@@ -245,4 +252,3 @@ class Manager(CoroutineWrapper):
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
 
-    
