@@ -201,3 +201,11 @@ class ProcessWrapper:
         # okay, it's running
         while self.running["errQueueToBox"]:
             pass
+        
+    class Manager():
+        def __init__(self):
+            self.tasks:set[aio.Task] = set()
+            
+        async def addTask(self, task:aio.Task):
+            self.tasks.add(task)
+            task.add_done_callback(self.tasks.discard)
