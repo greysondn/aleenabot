@@ -30,7 +30,13 @@ Last updated 29 Nov 2022, 01:07
 - `01:18` Try to get helpers good enough to run Hello World
 - `03:17` //_Set up ko-fi account_
 - `04:17` Try to get helpers good enough to run Hello World
-6:10 personal problems, no longer working on code
+- `06:10` //_personal problems, no longer working on code_
+
+## Friday 02 December
+
+- `00:17` Work on database design and data export
+- `07:51` swapping repos, only count half the time later on.
+- `07:51` Work on improving bot libraries
 
 ## Totals
 
