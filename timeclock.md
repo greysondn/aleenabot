@@ -30,6 +30,7 @@ Last updated 29 Nov 2022, 01:07
 - `01:18` Try to get helpers good enough to run Hello World
 - `03:17` //_Set up ko-fi account_
 - `04:17` Try to get helpers good enough to run Hello World
+6:10 personal problems, no longer working on code
 
 ## Totals
 

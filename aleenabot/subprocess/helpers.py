@@ -196,6 +196,7 @@ class CoroutineWrapper:
         # okay, it's running
         while self.running["outQueueToBox"]:
             msg = (await self.stdout.get())[1]
+            print(f"{self.name} : outqueuetobox : {msg}")
             await self.message(message=msg)
         
     async def errStdToQueue(self):
@@ -262,7 +263,7 @@ class ProcessWrapper(CoroutineWrapper):
                 decoded:str = latest.decode()
 
                 # and now put it on the queue
-                await self.stdout.put((1000, decoded))
+                await self.stdout.put((1000, "print " + decoded))
 
         
 class Manager(CoroutineWrapper):
@@ -276,7 +277,23 @@ class Manager(CoroutineWrapper):
 
         self.running["childrenOutboxHandler"] = False
         self.poison["childrenOutboxHandler"]   = False
-    
+
+    async def main(self):
+        #
+        # TODO: python 3.11 - rewrite with a taskgroup
+        # this is pretty epic, really, though
+
+        # let's just do it as a list, shall we?
+        tasks = [
+            self.childrenOutboxHandler(),
+        ]
+        
+        # gets weird right about now, I think
+        for task in tasks:
+            await self.createTaskAndMessageMain(task)
+            
+        # I think that's it?
+
     async def mainProcess(self):
         # Parent
         await super().mainProcess()
@@ -304,6 +321,9 @@ class Manager(CoroutineWrapper):
         while self.running["childrenOutboxHandler"]:
             # create a list of current children this loop
             childList = list(self.children.values())
+            
+            print(childList)
+            
             
             for child in childList:
                 # make sure it's still alive, basically
@@ -393,6 +413,7 @@ class ManagerCommandParser:
             if (swp == "task"):
                 await self.task(host, commands, msg)
             elif (swp == "print"):
+                print("print!")
                 await self.print(host, commands, msg)
             else:
                 await self.special_error(host, commands, msg, "unknown arguments")
