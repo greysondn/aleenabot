@@ -8,9 +8,10 @@ name = "pypi"
 peewee = "*"
 peewee-aio = {extras = ["aiomysql", "aiopg", "aiosqlite"], version = "*"}
 requests = "*"
+shlax = "*"
 
 [dev-packages]
 aleenabot = {editable = true, path = "."}
 
 [requires]
-python_version = "3.10"
+python_version = "3.11"

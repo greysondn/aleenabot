@@ -35,8 +35,10 @@ Last updated 29 Nov 2022, 01:07
 ## Friday 02 December
 
 - `00:17` Work on database design and data export
-- `07:51` swapping repos, only count half the time later on.
+- `07:51` //_swapping repos, only count half the time later on._
 - `07:51` Work on improving bot libraries
+- `07:52` //_no ending data, so I'mma just kill the clock._
+
 
 ## Totals
 
