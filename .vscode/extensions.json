@@ -6,6 +6,10 @@
         "kevinrose.vsc-python-indent",
         "donjayamanne.python-environment-manager",
         "njpwerner.autodocstring",
-        "michelemelluso.gitignore"
+        "michelemelluso.gitignore",
+        "hediet.debug-visualizer",
+        "darkempire78.discord-tools",
+        "076923.python-image-preview",
+        "pascalreitermann93.vscode-yaml-sort"
     ]
 }
