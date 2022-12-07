@@ -1,2 +1,2 @@
-from .shlaxprocess import Subprocess      # noqa
+from .shlax import Subprocess      # noqa
 Proc = Subprocess                         # noqa
