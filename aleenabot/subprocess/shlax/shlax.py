@@ -146,16 +146,26 @@ class ShlaxSubprocess:
             self.flush()
 
     def highlight(self, line, highlight=True):
-        if not highlight or (
-            b'\x1b[' in line
-            or b'\033[' in line
-            or b'\\e[' in line
-        ):
-            return line
+        ret = b""
         
-        line = line.encode()
+        if  (
+                (
+                    not highlight
+                ) or (
+                    (
+                        b'\x1b[' in line
+                    ) or (
+                        b'\033[' in line
+                    ) or (
+                        b'\\e['  in line
+                    )
+                )
+        ):
+            ret = line
+        else:
+            ret = line.encode()
 
-        return line
+        return ret
 
     def prefix_line(self):
         return [
