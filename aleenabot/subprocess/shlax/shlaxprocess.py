@@ -4,9 +4,6 @@ import re
 import shlex
 import sys
 
-from aleenabot.subprocess.shlax.colors import colors
-
-
 class SubprocessProtocol(asyncio.SubprocessProtocol):
     def __init__(self, proc):
         self.proc = proc
@@ -21,23 +18,7 @@ class SubprocessProtocol(asyncio.SubprocessProtocol):
     def process_exited(self):
         self.proc.exit_future.set_result(True)
 
-
 class Subprocess:
-    colors = colors
-
-    # arbitrary list of colors
-    prefix_colors = (
-        colors.cyan,
-        colors.blue,
-        colors.green,
-        colors.purple,
-        colors.red,
-        colors.yellow,
-        colors.gray,
-        colors.pink,
-        colors.orange,
-    )
-
     # class variables, meant to grow as new prefixes are discovered to ensure
     # output alignment
     prefixes = dict()
@@ -71,19 +52,16 @@ class Subprocess:
                 if isinstance(search, str):
                     search = search.encode()
                 search = re.compile(search)
-                replace = replace.format(**self.colors.__dict__).encode()
-                self.regexps[search] = replace
+                self.regexps[search] = search
 
     async def start(self, wait=True):
         if not self.quiet:
             self.output(
-                self.colors.bgray.encode()
-                + b'+ '
+                b'+ '
                 + shlex.join([
                     arg.replace('\n', '\\n')
                     for arg in self.args
-                ]).encode()
-                + self.colors.reset.encode(),
+                ]).encode(),
                 highlight=False
             )
 
@@ -162,21 +140,13 @@ class Subprocess:
 
         for search, replace in self.regexps.items():
             line = re.sub(search, replace, line)
-        line = line + self.colors.reset.encode()
+        line = line.encode()
 
         return line
 
     def prefix_line(self):
-        if self.prefix not in self.prefixes:
-            self.prefixes[self.prefix] = self.prefix_colors[len(self.prefixes)]
-            if len(self.prefix) > self.prefix_length:
-                type(self).prefix_length = len(self.prefix)
-
         return [
             self.prefixes[self.prefix].encode(),
-            b' ' * (self.prefix_length - len(self.prefix)),
-            self.prefix.encode(),
             b' ',
-            self.colors.reset.encode(),
             b'| '
         ]
