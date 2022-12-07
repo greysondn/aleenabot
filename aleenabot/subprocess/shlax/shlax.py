@@ -57,16 +57,6 @@ class ShlaxSubprocess:
         # ew
         self.err_raw = bytearray()
 
-        # even in the original this is non-obvious
-        # will probably trash it
-        self.regexps = dict()
-        if regexps:
-            for search, replace in regexps.items():
-                if isinstance(search, str):
-                    search = search.encode()
-                search = re.compile(search)
-                self.regexps[search] = search
-
     async def start(self, wait=True):
         if not self.quiet:
             # probably attempts to notify it was started, or at least called to
@@ -162,9 +152,7 @@ class ShlaxSubprocess:
             or b'\\e[' in line
         ):
             return line
-
-        for search, replace in self.regexps.items():
-            line = re.sub(search, replace, line)
+        
         line = line.encode()
 
         return line
