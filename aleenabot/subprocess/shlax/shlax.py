@@ -4,7 +4,7 @@ import re
 import shlex
 import sys
 
-class SubprocessProtocol(asyncio.SubprocessProtocol):
+class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
     # this gets handed the child ShlaxProcess
     def __init__(self, proc):
         self.proc = proc
@@ -22,7 +22,7 @@ class SubprocessProtocol(asyncio.SubprocessProtocol):
         # future of proc object
         self.proc.exit_future.set_result(True)
 
-class Subprocess:
+class ShlaxSubprocess:
     # class variables, meant to grow as new prefixes are discovered to ensure
     # output alignment
     prefixes = dict()
@@ -32,7 +32,6 @@ class Subprocess:
         self,
         *args,
         quiet=None,
-        prefix=None,
         regexps=None,
         write=None,
         flush=None,
@@ -45,8 +44,6 @@ class Subprocess:
         self.args = args
         # rewrite - default plus type opt-in
         self.quiet = quiet if quiet is not None else False
-        # probably remove
-        self.prefix = prefix
         # probably remove
         self.write = write or sys.stdout.buffer.write
         # probably remove
@@ -95,7 +92,7 @@ class Subprocess:
         # Create the subprocess controlled by DateProtocol;
         # redirect the standard output into a pipe.
         self.transport, self.protocol = await loop.subprocess_exec(
-            lambda: SubprocessProtocol(self),
+            lambda: ShlaxSubprocessProtocol(self),
             *self.args,
             # FIXME: I will want stdin to be a pipe, too.
             stdin=None,
@@ -151,8 +148,6 @@ class Subprocess:
     def output(self, data, highlight=True, flush=True):
         for line in data.strip().split(b'\n'):
             line = [self.highlight(line) if highlight else line]
-            if self.prefix:
-                line = self.prefix_line() + line
             line.append(b'\n')
             line = b''.join(line)
             self.write(line)
@@ -176,7 +171,6 @@ class Subprocess:
 
     def prefix_line(self):
         return [
-            self.prefixes[self.prefix].encode(),
             b' ',
             b'| '
         ]
