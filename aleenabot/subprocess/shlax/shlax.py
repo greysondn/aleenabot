@@ -35,8 +35,6 @@ class ShlaxSubprocess:
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
         
-
-        
         self.boxes:ShlaxBuffers = ShlaxBuffers()
         """I/O endpoints for this member"""
         
@@ -62,10 +60,11 @@ class ShlaxSubprocess:
         """Short term buffer for stdErr, meant mostly to help only output on 
            full lines"""
         
-        # ---
-
-        # not so bad
-        self.started = False
+        self.started:bool = False
+        '''
+        Whether or not this process has had `start` called.
+        '''
+        
         # ew, only on joins
         self.waited = False
 
