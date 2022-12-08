@@ -198,14 +198,6 @@ class ShlaxSubprocess:
         self._stdOutErr(data, "err")
 
     @functools.cached_property
-    def out(self):
-        return self.out_raw.decode().strip()
-
-    @functools.cached_property
-    def err(self):
-        return self.err_raw.decode().strip()
-
-    @functools.cached_property
     def rc(self):
         return self.transport.get_returncode()
 
