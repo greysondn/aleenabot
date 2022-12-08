@@ -62,6 +62,8 @@ class InterProcessMail:
         else:
             # we can only compare against mail for now
             # so... that's an error.
+            
+            # this is expected to go unhandled.
             raise TypeError("InterprocessMail can only compare to InterprocessMail")
         return ret
 
