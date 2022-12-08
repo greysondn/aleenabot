@@ -35,11 +35,17 @@ class ShlaxSubprocess:
             args = ['sh', '-euc', args[0]]
         
         self.boxes:ShlaxBuffers = ShlaxBuffers()
+        """I/O endpoints for this member"""
+        
+        self.args = args
+        """Requested process plus arguments.
+        
+        Defaults to `sh -euc`, probably not good
+        """
         
         # ---
         
-        # okay, has to be app plus its args, right?
-        self.args = args
+        
         # rewrite - default plus type opt-in
         self.quiet = quiet if quiet is not None else False
         # probably remove
