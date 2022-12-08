@@ -4,6 +4,7 @@ import re
 import shlex
 import sys
 import aleenabot.subprocess.buffer as aspBuffer
+import aleenabot.subprocess.helpers as aHelpers
 
 
 class ShlaxBuffers(aspBuffer.IOBufferSet):
