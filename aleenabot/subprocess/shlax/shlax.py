@@ -57,10 +57,6 @@ class ShlaxSubprocess:
         self.started = False
         # ew, only on joins
         self.waited = False
-        # ew
-        self.out_raw = bytearray()
-        # ew
-        self.err_raw = bytearray()
 
     async def start(self, wait=True):
         if not self.quiet:
@@ -117,13 +113,11 @@ class ShlaxSubprocess:
 
     # FIXME: trash, replace with to-buffer handling
     def stdout(self, data):
-        self.out_raw.extend(data)
         if not self.quiet:
             self.output(data)
 
     # FIXME: trash, replace with to-buffer handling
     def stderr(self, data):
-        self.err_raw.extend(data)
         if not self.quiet:
             self.output(data)
 
