@@ -2,6 +2,7 @@ import asyncio as aio
 from collections import deque
 from enum import Enum
 from typing import Any, Awaitable, cast, Optional
+from aleenabot.subprocess.buffer import IOBufferSet
 
 async def waitUntilFunctionTrue(function_, pollIntervalInSeconds:float = 1.0):
     while (function_() != True):
@@ -70,38 +71,16 @@ class InterProcessMail:
 class CoroutineWrapper:
     def __init__(self, name:str="Unknown"):
         self.name:str    = name
-        self.inbox       = aio.PriorityQueue()
-        self.outbox      = aio.PriorityQueue()
-        self.errbox      = aio.PriorityQueue()
-        self.stdin       = aio.PriorityQueue()
-        self.stdout      = aio.PriorityQueue()
-        self.stderr      = aio.PriorityQueue()
+        self.boxes       = IOBufferSet()
 
-        self.running = {
-            "mainProcess"   : False,
-            "inBoxToQueue"  : False,
-            "inQueueToStd"  : False,
-            "outStdToQueue" : False,
-            "outQueueToBox" : False,
-            "errStdToQueue" : False,
-            "errQueueToBox" : False,
-        }
-        
-        self.poison = {
-            "mainProcess"   : False,
-            "inBoxToQueue"  : False,
-            "inQueueToStd"  : False,
-            "outStdToQueue" : False,
-            "outQueueToBox" : False,
-            "errStdToQueue" : False,
-            "errQueueToBox" : False,
-        }
+        self.processRunning  = False
+        self.processPoisoned = False
 
     async def guardAgainstLoopback(self, msg:InterProcessMail):
         if (msg.receiver == self.name):
-            await self.inbox.put(msg)
+            await self.boxes.inbox.stdin.put(msg)
         else:
-            await self.outbox.put(msg)
+            await self.boxes.outbox.stdout.put(msg)
 
     async def message(
                         self, 
@@ -156,13 +135,10 @@ class CoroutineWrapper:
 
     async def mainProcess(self):
         # tell everything we're running
-        for key in list(self.running.keys()):
-            self.running[key] = True
+        self.boxes.startAll()
+        self.processRunning = True
 
     async def inBoxToQueue(self):
-        # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "inBoxToQueue", True)
-
         # okay, it's running
         while self.running["inBoxToQueue"]:
             expect:Any = await self.inbox.get()   # unresolved coroutine or tuple, I think
