@@ -3,10 +3,10 @@ import functools
 import re
 import shlex
 import sys
-import aleenabot.subprocess.buffer as AspBuffer
+import aleenabot.subprocess.buffer as aspBuffer
 
 
-class ShlaxBuffers(AspBuffer.IOBufferSet):
+class ShlaxBuffers(aspBuffer.IOBufferSet):
     def __init__(self):
         super().__init__()
 
