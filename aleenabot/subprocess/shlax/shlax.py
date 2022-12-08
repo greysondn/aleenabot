@@ -30,7 +30,7 @@ class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
         self.proc.exit_future.set_result(True)
 
 class ShlaxSubprocess:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False, write=None, flush=None):
+    def __init__(self, *args, name:str="Unknown", quiet:bool=False):
         # guard against empty args
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
@@ -63,11 +63,7 @@ class ShlaxSubprocess:
            full lines"""
         
         # ---
-        
-        # probably remove
-        self.awrite = write or sys.stdout.buffer.write
-        # probably remove
-        self.aflush = flush or sys.stdout.flush
+
         # not so bad
         self.started = False
         # ew, only on joins
