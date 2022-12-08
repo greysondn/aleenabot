@@ -29,13 +29,7 @@ class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
         self.proc.exit_future.set_result(True)
 
 class ShlaxSubprocess:
-    def __init__(
-        self,
-        *args,
-        quiet=None,
-        write=None,
-        flush=None,
-    ):
+    def __init__(self, *args, quiet=None, write=None, flush=None):
         if len(args) == 1 and ' ' in args[0]:
             # looks like a default so it can't crash to death
             args = ['sh', '-euc', args[0]]
