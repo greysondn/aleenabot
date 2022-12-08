@@ -162,10 +162,41 @@ class ShlaxSubprocess:
             # and cycle back in case we missed another output line
             self.stdout(b'')
 
-    # FIXME: trash, replace with to-buffer handling
     def stderr(self, data):
-        if not self.quiet:
-            self.output(data)
+        """stream handler for underlying subprocess's stderr.
+
+        Args:
+            data (maybe binary string): data the application tried to std err.
+        """
+        # make sure it's a full line or we have a full line anyway
+        txt = data.decode()
+        self.stdErrBuffer = self.stdErrBuffer + txt
+        
+        if (self.stdErrBuffer.contains("\n")):
+            # separate into remainder and our current shtuff
+            splits:list[str] = self.stdErrBuffer.split("\n", 1)
+            cur:str = splits[0]
+            self.stdErrBuffer = splits[1]
+            
+            # placeholder interprocess mail
+            swp:aHelpers.InterProcessMail = aHelpers.InterProcessMail(
+                sender = self.name,
+                receiver = "main",
+                quiet = self.quiet
+            )
+        
+            # for now I'm just going to dump straight to main and write a
+            # mail sorter there
+            swp.receiver = "main"
+        
+            # similarly, we just want to send the message as we know it
+            swp.message = cur
+            
+            # append to outbox stdOut
+            self.boxes.outbox.stderr.put_nowait(swp)
+            
+            # and cycle back in case we missed another output line
+            self.stderr(b'')
 
     @functools.cached_property
     def out(self):
