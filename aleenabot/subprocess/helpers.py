@@ -59,6 +59,10 @@ class InterProcessMail:
                     # doesn't matter, won't be able to sort it any
                     # further anyway
                     ret = obj
+        else:
+            # we can only compare against mail for now
+            # so... that's an error.
+            raise TypeError("InterprocessMail can only compare to InterprocessMail")
         return ret
 
 class CoroutineWrapper:
