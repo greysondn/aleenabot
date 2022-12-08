@@ -61,12 +61,10 @@ class ShlaxSubprocess:
            full lines"""
         
         self.started:bool = False
-        '''
-        Whether or not this process has had `start` called.
-        '''
+        '''Whether or not this process has had `start` called.'''
         
-        # ew, only on joins
-        self.waited = False
+        self.waited:bool = False
+        '''whether or not the underlying process has had a wait for join called'''
 
     async def start(self, wait=True):
         # Get a reference to the event loop as we plan to use
