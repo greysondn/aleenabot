@@ -42,25 +42,23 @@ class InterProcessMail:
         self.payload:Any               = payload
     
     def __lt__(self, obj:Any):
-      ret = self
-        
-      # make sure it's mail
-      if isinstance(obj, InterProcessMail):
-        # priority
-        if (self.priority < obj.priority):
-            ret = self
-        elif (self.priority > obj.priority):
-            ret = obj
-        else:
-            # equal, let's try index
-            if (self.index < obj.index):
+        ret = self
+            
+        # make sure it's mail
+        if isinstance(obj, InterProcessMail):
+            # priority
+            if (self.priority < obj.priority):
                 ret = self
-            else:
-                # doesn't matter, won't be able to sort it any
-                # further anyway
+            elif (self.priority > obj.priority):
                 ret = obj
-            
-            
+            else:
+                # equal, let's try index
+                if (self.index < obj.index):
+                    ret = self
+                else:
+                    # doesn't matter, won't be able to sort it any
+                    # further anyway
+                    ret = obj
         return ret
 
 class CoroutineWrapper:
