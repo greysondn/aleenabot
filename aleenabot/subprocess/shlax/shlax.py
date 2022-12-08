@@ -30,16 +30,13 @@ class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
 
 class ShlaxSubprocess:
     def __init__(self, *args, quiet=None, write=None, flush=None):
-        self.boxes:ShlaxBuffers = ShlaxBuffers()
-        
-
-        
         # guard against empty args
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
-
-        # ---
         
+        self.boxes:ShlaxBuffers = ShlaxBuffers()
+        
+        # ---
         
         # okay, has to be app plus its args, right?
         self.args = args
