@@ -32,11 +32,15 @@ class ShlaxSubprocess:
     def __init__(self, *args, quiet=None, write=None, flush=None):
         self.boxes:ShlaxBuffers = ShlaxBuffers()
         
-        # ---
-        if len(args) == 1 and ' ' in args[0]:
-            # looks like a default so it can't crash to death
+
+        
+        # guard against empty args
+        if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
 
+        # ---
+        
+        
         # okay, has to be app plus its args, right?
         self.args = args
         # rewrite - default plus type opt-in
