@@ -29,7 +29,7 @@ class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
         self.proc.exit_future.set_result(True)
 
 class ShlaxSubprocess:
-    def __init__(self, *args, quiet=None, write=None, flush=None):
+    def __init__(self, *args, quiet:bool=False, write=None, flush=None):
         # guard against empty args
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
@@ -43,11 +43,11 @@ class ShlaxSubprocess:
         Defaults to `sh -euc`, probably not good
         """
         
+        self.quiet:bool = quiet
+        """Whether this process should print to terminal/etc"""
+        
         # ---
         
-        
-        # rewrite - default plus type opt-in
-        self.quiet = quiet if quiet is not None else False
         # probably remove
         self.awrite = write or sys.stdout.buffer.write
         # probably remove
