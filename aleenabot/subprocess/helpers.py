@@ -42,20 +42,24 @@ class InterProcessMail:
         self.payload:Any               = payload
     
     def __lt__(self, obj:Any):
-        return self.index < obj.index
-    
-    def clone(self) -> "InterProcessMail":
-        return InterProcessMail(
-            sender   = self.sender,
-            receiver = self.receiver,
-            type_    = self.type,
-            priority = self.priority,
-            message  = self.message,
-            payload  = self.payload
-        )
-
-    def toPriorityQueue(self) -> tuple[int, "InterProcessMail"]:
-        return (self.priority, self)
+        ret = self
+        
+        # priority
+        if (self.priority < obj.priority):
+            ret = self
+        elif (self.priority > obj.priority):
+            ret = obj
+        else:
+            # equal, let's try index
+            if (self.index < obj.index):
+                ret = self
+            else:
+                # doesn't matter, won't be able to sort it any
+                # further anyway
+                ret = obj
+            
+            
+        return ret
 
 class CoroutineWrapper:
     def __init__(self, name:str="Unknown"):
@@ -89,9 +93,9 @@ class CoroutineWrapper:
 
     async def guardAgainstLoopback(self, msg:InterProcessMail):
         if (msg.receiver == self.name):
-            await self.inbox.put(msg.toPriorityQueue())
+            await self.inbox.put(msg)
         else:
-            await self.outbox.put(msg.toPriorityQueue())
+            await self.outbox.put(msg)
 
     async def message(
                         self, 
@@ -329,7 +333,7 @@ class Manager(CoroutineWrapper):
                 # make sure it's still alive, basically
                 if (not child.outbox.empty()):
                     msg:InterProcessMail = (await child.outbox.get())[1]
-                    await self.inbox.put(msg.toPriorityQueue)
+                    await self.inbox.put(msg)
     
     async def inBoxToQueue(self):
         # wait for this to officially start
