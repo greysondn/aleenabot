@@ -35,6 +35,8 @@ class ShlaxSubprocess:
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
         
+
+        
         self.boxes:ShlaxBuffers = ShlaxBuffers()
         """I/O endpoints for this member"""
         
@@ -50,6 +52,15 @@ class ShlaxSubprocess:
         
         self.quiet:bool = quiet
         """Whether this process should print to terminal/etc"""
+        
+        
+        self.stdErrBuffer:str = ""
+        """Short term buffer for stdErr, meant mostly to help only output on 
+           full lines"""
+        
+        self.stdOutBuffer:str = ""
+        """Short term buffer for stdErr, meant mostly to help only output on 
+           full lines"""
         
         # ---
         
@@ -115,10 +126,41 @@ class ShlaxSubprocess:
 
         return self
 
-    # FIXME: trash, replace with to-buffer handling
     def stdout(self, data):
-        if not self.quiet:
-            self.output(data)
+        """stream handler for underlying subprocess's stdout.
+
+        Args:
+            data (maybe binary string): data the application tried to std out.
+        """
+        # make sure it's a full line or we have a full line anyway
+        txt = data.decode()
+        self.stdOutBuffer = self.stdOutBuffer + txt
+        
+        if (self.stdOutBuffer.contains("\n")):
+            # separate into remainder and our current shtuff
+            splits:list[str] = self.stdOutBuffer.split("\n", 1)
+            cur:str = splits[0]
+            self.stdOutBuffer = splits[1]
+            
+            # placeholder interprocess mail
+            swp:aHelpers.InterProcessMail = aHelpers.InterProcessMail(
+                sender = self.name,
+                receiver = "main",
+                quiet = self.quiet
+            )
+        
+            # for now I'm just going to dump straight to main and write a
+            # mail sorter there
+            swp.receiver = "main"
+        
+            # similarly, we just want to send the message as we know it
+            swp.message = cur
+            
+            # append to outbox stdOut
+            self.boxes.outbox.stdout.put_nowait(swp)
+            
+            # and cycle back in case we missed another output line
+            self.stdout(b'')
 
     # FIXME: trash, replace with to-buffer handling
     def stderr(self, data):

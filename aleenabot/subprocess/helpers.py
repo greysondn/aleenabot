@@ -30,11 +30,13 @@ class InterProcessMail:
                     type_:InterProcessMailType=InterProcessMailType.NULL,
                     priority:int = 1000,
                     message:str = "Message empty.",
+                    quiet:bool = False,
                     payload:Any = None
                 ):
         self.index:int = InterProcessMail.count
         InterProcessMail.count += 1
         
+        self.quiet:bool                = quiet
         self.sender:str                = sender
         self.receiver:str              = receiver
         self.type:InterProcessMailType = type_
