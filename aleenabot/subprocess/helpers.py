@@ -42,8 +42,10 @@ class InterProcessMail:
         self.payload:Any               = payload
     
     def __lt__(self, obj:Any):
-        ret = self
+      ret = self
         
+      # make sure it's mail
+      if isinstance(obj, InterProcessMail):
         # priority
         if (self.priority < obj.priority):
             ret = self
