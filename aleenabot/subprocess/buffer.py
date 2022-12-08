@@ -31,5 +31,6 @@ class IOBufferSet():
     def startAll(self):
         self.inbox.startAll()
         self.outbox.startAll()
-    def checkLoopback(self, input, target):
-        
+    def checkLoopback(self, name, msg):
+        for check in self.loopbackChecks:
+            check(self, name, msg)

@@ -76,11 +76,7 @@ class CoroutineWrapper:
         self.processRunning  = False
         self.processPoisoned = False
 
-    async def guardAgainstLoopback(self, msg:InterProcessMail):
-        if (msg.receiver == self.name):
-            await self.boxes.inbox.stdin.put(msg)
-        else:
-            await self.boxes.outbox.stdout.put(msg)
+    # REMOVED: Loopback check function
 
     async def message(
                         self, 
@@ -100,7 +96,7 @@ class CoroutineWrapper:
                         payload = payload
                     )
         # and then huck it into the outbox
-        await self.guardAgainstLoopback(msg)
+        # REMOVED: Loopback check call
 
     async def createTaskAndMessageMain(self, coro):
         task = aio.create_task(coro)
