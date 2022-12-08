@@ -74,20 +74,6 @@ class ShlaxSubprocess:
         self.waited = False
 
     async def start(self, wait=True):
-        if not self.quiet:
-            # probably attempts to notify it was started, or at least called to
-            # start. Some of this was butchered out.
-            #
-            # FIXME: Fix or cut the rest of the way out
-            self.output(
-                b'+ '
-                + shlex.join([
-                    arg.replace('\n', '\\n')
-                    for arg in self.args
-                ]).encode(),
-                highlight=False
-            )
-
         # Get a reference to the event loop as we plan to use
         # low-level APIs.
         loop = asyncio.get_running_loop()
@@ -200,42 +186,3 @@ class ShlaxSubprocess:
     @functools.cached_property
     def rc(self):
         return self.transport.get_returncode()
-
-    # FIXME: trash, maybe entirely
-    def output(self, data, highlight=True, flush=True):
-        for line in data.strip().split(b'\n'):
-            line = [self.highlight(line) if highlight else line]
-            line.append(b'\n')
-            line = b''.join(line)
-            self.write(line)
-
-        if flush:
-            self.flush()
-
-    def highlight(self, line, highlight=True):
-        ret = b""
-        
-        if  (
-                (
-                    not highlight
-                ) or (
-                    (
-                        b'\x1b[' in line
-                    ) or (
-                        b'\033[' in line
-                    ) or (
-                        b'\\e['  in line
-                    )
-                )
-        ):
-            ret = line
-        else:
-            ret = line.encode()
-
-        return ret
-
-    def prefix_line(self):
-        return [
-            b' ',
-            b'| '
-        ]
