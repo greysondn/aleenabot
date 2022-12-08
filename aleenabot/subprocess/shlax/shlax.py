@@ -126,41 +126,68 @@ class ShlaxSubprocess:
 
         return self
 
+    def _stdOutErr(self, data, which:str):
+        """Helper to consoliate stdOut and stdErr's common code
+
+        Args:
+            data (maybe binary string): data the application tried to stream out.
+            which (str): either "out" or "err" - which stream this is from
+        """
+        # this is written to be comparatively time efficient for what it is.
+        
+        # it does not spark joy.
+
+        # in buffer data
+        txt:str = data.decode()
+        curBuffer:str = ""
+
+        if (which == "out"):
+            self.stdOutBuffer = self.stdOutBuffer + txt
+            curBuffer = self.stdOutBuffer
+        elif(which == "err"):
+            self.stdErrBuffer = self.stdErrBuffer + txt
+            curBuffer = self.stdErrBuffer
+        else:
+            raise ValueError("which must be `err` or `out`")
+        
+        # check for newline - would mean do output
+        if ("\n" in curBuffer):
+            # separate into remainder and current shtuff
+            splits:list[str] = curBuffer.split("\n", 1)
+        
+            # get the current stuff
+            cur:str = splits[0]
+            
+            # placeholder interprocess mail
+            swp:aHelpers.InterProcessMail = aHelpers.InterProcessMail(
+                sender      = self.name,
+                receiver    = "main",
+                quiet       = self.quiet,
+                message     = cur
+            )
+            
+            # late deferred stuff
+            # - assign remainder from splits
+            # - put into correct outgoing box
+            # - cycle back in case we missed another line
+            if (which == "out"):
+                self.stdOutBuffer = splits[1]
+                self.boxes.outbox.stdout.put_nowait(swp)
+                self.stdout(b'')
+            elif(which == "err"):
+                self.stdErrBuffer = splits[1]
+                self.boxes.outbox.stderr.put_nowait(swp)
+                self.stderr(b'')
+            else:
+                raise ValueError("which must be `err` or `out`")
+        
     def stdout(self, data):
         """stream handler for underlying subprocess's stdout.
 
         Args:
             data (maybe binary string): data the application tried to std out.
         """
-        # make sure it's a full line or we have a full line anyway
-        txt = data.decode()
-        self.stdOutBuffer = self.stdOutBuffer + txt
-        
-        if (self.stdOutBuffer.contains("\n")):
-            # separate into remainder and our current shtuff
-            splits:list[str] = self.stdOutBuffer.split("\n", 1)
-            cur:str = splits[0]
-            self.stdOutBuffer = splits[1]
-            
-            # placeholder interprocess mail
-            swp:aHelpers.InterProcessMail = aHelpers.InterProcessMail(
-                sender = self.name,
-                receiver = "main",
-                quiet = self.quiet
-            )
-        
-            # for now I'm just going to dump straight to main and write a
-            # mail sorter there
-            swp.receiver = "main"
-        
-            # similarly, we just want to send the message as we know it
-            swp.message = cur
-            
-            # append to outbox stdOut
-            self.boxes.outbox.stdout.put_nowait(swp)
-            
-            # and cycle back in case we missed another output line
-            self.stdout(b'')
+        self._stdOutErr(data, "out")
 
     def stderr(self, data):
         """stream handler for underlying subprocess's stderr.
@@ -168,35 +195,7 @@ class ShlaxSubprocess:
         Args:
             data (maybe binary string): data the application tried to std err.
         """
-        # make sure it's a full line or we have a full line anyway
-        txt = data.decode()
-        self.stdErrBuffer = self.stdErrBuffer + txt
-        
-        if (self.stdErrBuffer.contains("\n")):
-            # separate into remainder and our current shtuff
-            splits:list[str] = self.stdErrBuffer.split("\n", 1)
-            cur:str = splits[0]
-            self.stdErrBuffer = splits[1]
-            
-            # placeholder interprocess mail
-            swp:aHelpers.InterProcessMail = aHelpers.InterProcessMail(
-                sender = self.name,
-                receiver = "main",
-                quiet = self.quiet
-            )
-        
-            # for now I'm just going to dump straight to main and write a
-            # mail sorter there
-            swp.receiver = "main"
-        
-            # similarly, we just want to send the message as we know it
-            swp.message = cur
-            
-            # append to outbox stdOut
-            self.boxes.outbox.stderr.put_nowait(swp)
-            
-            # and cycle back in case we missed another output line
-            self.stderr(b'')
+        self._stdOutErr(data, "err")
 
     @functools.cached_property
     def out(self):
