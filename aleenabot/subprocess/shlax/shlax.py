@@ -45,9 +45,9 @@ class ShlaxSubprocess:
         # rewrite - default plus type opt-in
         self.quiet = quiet if quiet is not None else False
         # probably remove
-        self.write = write or sys.stdout.buffer.write
+        self.awrite = write or sys.stdout.buffer.write
         # probably remove
-        self.flush = flush or sys.stdout.flush
+        self.aflush = flush or sys.stdout.flush
         # not so bad
         self.started = False
         # ew, only on joins
