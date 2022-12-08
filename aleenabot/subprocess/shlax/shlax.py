@@ -38,7 +38,6 @@ class ShlaxSubprocess:
         self,
         *args,
         quiet=None,
-        regexps=None,
         write=None,
         flush=None,
     ):
