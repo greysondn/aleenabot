@@ -29,11 +29,6 @@ class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
         self.proc.exit_future.set_result(True)
 
 class ShlaxSubprocess:
-    # class variables, meant to grow as new prefixes are discovered to ensure
-    # output alignment
-    prefixes = dict()
-    prefix_length = 0
-
     def __init__(
         self,
         *args,
