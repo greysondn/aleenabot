@@ -3,6 +3,12 @@ import functools
 import re
 import shlex
 import sys
+import aleenabot.subprocess.buffer as AspBuffer
+
+
+class ShlaxBuffers(AspBuffer.IOBufferSet):
+    def __init__(self):
+        super().__init__()
 
 class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
     # this gets handed the child ShlaxProcess
