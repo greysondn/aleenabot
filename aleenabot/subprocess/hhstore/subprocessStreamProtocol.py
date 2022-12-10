@@ -1,3 +1,4 @@
+import asyncio as aio
 import asyncio.subprocess as subprocess
 
 PIPE = subprocess.PIPE
@@ -8,16 +9,18 @@ DEVNULL = subprocess.DEVNULL
 #
 # SubprocessStream protocol:
 #
-class SubprocessStreamProtocol(streams.FlowControlMixin,
-                               protocols.SubprocessProtocol):
+class SubprocessStreamProtocol(aio.SubprocessProtocol):
     """Like StreamReaderProtocol, but for a subprocess."""
 
+    # okay?
     def __init__(self, limit, loop):
-        super().__init__(loop=loop)
+        super().__init__()
+        self.loop = loop
         self._limit = limit
         self.stdin = self.stdout = self.stderr = None
         self._transport = None
 
+    # okay?
     def __repr__(self):
         info = [self.__class__.__name__]
         if self.stdin is not None:
