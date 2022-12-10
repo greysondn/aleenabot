@@ -6,7 +6,7 @@ DEVNULL = subprocess.DEVNULL
 
 
 #
-# SubprocessStream 协议:
+# SubprocessStream protocol:
 #
 class SubprocessStreamProtocol(streams.FlowControlMixin,
                                protocols.SubprocessProtocol):
