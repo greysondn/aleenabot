@@ -5,17 +5,28 @@ import shlex
 import sys
 import aleenabot.subprocess.buffer as aspBuffer
 import aleenabot.subprocess.helpers as aHelpers
+import io
 
 
 class ShlaxBuffers(aspBuffer.IOBufferSet):
     def __init__(self):
         super().__init__()
 
-class ShlaxSubprocessProtocol(asyncio.SubprocessProtocol):
-    # this gets handed the child ShlaxProcess
+class ShlaxSubprocessInputIOWrapper(io.BytesIO):
+    # Wrapping it as a file so you don't have to.
+    def __init__(self, initial_bytes=b""):
+        super().__init__(initial_bytes)
+        
+    def add(self, txt):
+        self.write(txt.encode())
+    
+    def addLine(self, txt):
+        self.add(txt + "\n")
+
+class ShlaxSubprocessOutputsProtocol(asyncio.SubprocessProtocol):
+    # this gets handed the child ShlaxSubProcess
     def __init__(self, proc):
         self.proc = proc
-        self.output = bytearray()
 
     def pipe_data_received(self, fd, data):
         if fd == 1:
@@ -51,10 +62,13 @@ class ShlaxSubprocess:
         self.quiet:bool = quiet
         """Whether this process should print to terminal/etc"""
         
-        
         self.stdErrBuffer:str = ""
         """Short term buffer for stdErr, meant mostly to help only output on 
            full lines"""
+        
+        self.inPipe:ShlaxSubprocessInputIOWrapper = ShlaxSubprocessInputIOWrapper()
+        '''Direct handle on underlying process's std pipe.
+        '''
         
         self.stdOutBuffer:str = ""
         """Short term buffer for stdErr, meant mostly to help only output on 
@@ -77,15 +91,15 @@ class ShlaxSubprocess:
         # Create the subprocess controlled by DateProtocol;
         # redirect the standard output into a pipe.
         self.transport, self.protocol = await loop.subprocess_exec(
-            lambda: ShlaxSubprocessProtocol(self),
+            lambda: ShlaxSubprocessOutputsProtocol(self),
             *self.args,
-            # FIXME: I will want stdin to be a pipe, too.
-            stdin=None,
+            stdin=self.stdInPipe,
         )
         # note on above fixme:
         # proc.stdin.write(input)
         # await process.stdin.drain() # flush
         
+        self.stdInPipe = None
         self.started = True
 
     # basically a join innit?
