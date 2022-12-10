@@ -1,6 +1,6 @@
 __all__ = ['create_subprocess_exec', 'create_subprocess_shell']
 
-import subprocess
+import asyncio.subprocess as subprocess
 
 PIPE = subprocess.PIPE
 STDOUT = subprocess.STDOUT
