@@ -1,5 +1,3 @@
-__all__ = ['create_subprocess_exec', 'create_subprocess_shell']
-
 import asyncio.subprocess as subprocess
 
 PIPE = subprocess.PIPE
