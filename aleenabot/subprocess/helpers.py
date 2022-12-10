@@ -117,7 +117,7 @@ class CoroutineWrapper:
         # let's just do it as a list, shall we?
         tasks = [
             self.mainProcess(),
-            self.inQueueToStd(),
+            self.stdinHandler(),
             self.outStdToQueue(),
             self.outQueueToBox(),
             self.errStdToQueue(),
@@ -135,7 +135,7 @@ class CoroutineWrapper:
         await self.boxes.startAll()
         self.processRunning = True
     
-    async def inQueueToStd(self):
+    async def stdinHandler(self):
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
