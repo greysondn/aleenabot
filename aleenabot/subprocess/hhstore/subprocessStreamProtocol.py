@@ -34,7 +34,7 @@ class SubprocessStreamProtocol(aio.SubprocessProtocol):
     def connection_made(self, transport):
         self._transport = transport
 
-        stdout_transport = transport.get_pipe_transport(1)
+        stdout_transport = tr
         if stdout_transport is not None:
             self.stdout = streams.StreamReader(limit=self._limit,
                                                loop=self._loop)
