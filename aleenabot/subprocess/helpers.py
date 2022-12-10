@@ -117,7 +117,6 @@ class CoroutineWrapper:
         # let's just do it as a list, shall we?
         tasks = [
             self.mainProcess(),
-            self.inBoxToQueue(),
             self.inQueueToStd(),
             self.outStdToQueue(),
             self.outQueueToBox(),
@@ -133,25 +132,20 @@ class CoroutineWrapper:
 
     async def mainProcess(self):
         # tell everything we're running
-        self.boxes.startAll()
+        await self.boxes.startAll()
         self.processRunning = True
-
-    async def inBoxToQueue(self):
-        # okay, it's running
-        while self.running["inBoxToQueue"]:
-            expect:Any = await self.inbox.get()   # unresolved coroutine or tuple, I think
-            incoming:InterProcessMail = expect[1] # fix type, trim priority anyway
     
     async def inQueueToStd(self):
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
-        while (not self.running["inQueueToStd"]):
+        while (not self.boxes.inbox.stdin.isRunning):
             await aio.sleep(1)
-        
+            
         # okay, it's running
-        while self.running["inQueueToStd"]:
-            await aio.sleep(1)
+        while (self.boxes.inbox.stdin.isRunning):
+            incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+            # TODO: actually input stdin
     
     async def outStdToQueue(self):
         # TODO: Enable poisoning...?
