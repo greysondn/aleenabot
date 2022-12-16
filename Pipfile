@@ -10,6 +10,7 @@ peewee-aio = {extras = ["aiomysql", "aiopg", "aiosqlite"], version = "*"}
 pillow = "*"
 requests = "*"
 shlax = "*"
+"ruamel.yaml" = "*"
 
 [dev-packages]
 aleenabot = {editable = true, path = "."}
