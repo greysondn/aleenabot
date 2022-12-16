@@ -3,8 +3,11 @@
 import discord
 import logging
 
-intents = discord.Intents.default()
+# figuring out what intents I need is like
+# https://discordpy.readthedocs.io/en/stable/intents.html
+# provides checklist
 
+intents = discord.Intents.default()
 # auto_moderation
 # auto_moderation_configuration
 # auto_moderation_execution
