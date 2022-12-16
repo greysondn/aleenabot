@@ -1,4 +1,5 @@
 # This example requires the 'message_content' intent.
+import asyncio as aio
 import discord
 from ruamel.yaml import YAML
 
@@ -20,11 +21,10 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if message.author == client.user:
-        return
+    if (message.author != client.user):
+        if str(message.channel.id) in conf["discord"]["channels"]["listen"]:
+            if message.content.startswith('$hello'):
+                await message.channel.send('Hello!')
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
-
-# run it
+# run it - perma block, must be last
 client.run(conf["discord"]["core"]["token"])
