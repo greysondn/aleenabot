@@ -73,10 +73,10 @@ class InterProcessMail:
         return ret
 
 class SubprocessWrapper:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:aio.TaskGroup=aio.TaskGroup()):
+    def __init__(self, *args, name:str="Unknown", quiet:bool=False):
         self.name:str         = name
-        self.tg:aio.TaskGroup = tg
-        self.proc             = ShlaxSubprocess(args, name=name, quiet=quiet, tg=tg)
+        self.tg:aio.TaskGroup = None # type: ignore
+        self.proc             = ShlaxSubprocess(args, name=name, quiet=quiet)
         self.boxes            = self.proc.boxes
         self.processRunning   = False
         self.processPoisoned  = False
@@ -203,7 +203,7 @@ class Manager(SubprocessWrapper):
         self.name = "main"
         self.parser = CommandParser()
         self.boxes = IOBufferSet()
-        self.tg = aio.TaskGroup()
+        self.tg:aio.TaskGroup = None # type: ignore        
         self.children  = set()
         self.childBoxes = dict()
         
@@ -247,6 +247,7 @@ class Manager(SubprocessWrapper):
                 await aio.sleep(1)
     
     async def start(self):
-        async with self.tg as tg:
+        async with aio.TaskGroup() as tg:
+            self.tg = tg
             tg.create_task(self.mailroom())
             tg.create_task(self.stdinHandler())
