@@ -3,6 +3,11 @@
 import argparse
 import discord
 import logging
+from ruamel.yaml import YAML
+
+# godawful scoping
+client:discord.Client   = None  # type: ignore 
+bot:"AleenaBotDiscord"  = None  # type: ignore
 
 class AleenaBotDiscord():
     def __init__(self, conf:dict):
@@ -41,38 +46,56 @@ class AleenaBotDiscord():
         self.client = discord.Client(
                                         intents=self.intents
                                     )
+        client = self.client
+        
+        # analog to self
+        bot = self
+        
+    def run(self):
+        _conf = self.conf.get("core",{})
+        logHandler = logging.FileHandler(
+                                    filename=_conf.get("log_path", "discord_aleena.log"), 
+                                    encoding="utf-8",
+                                    mode="a"
+                                )
 
-        @self.client.event
-        async def on_ready():
-            print(f'We have logged in as {self.client.user}')
+        self.client.run(
+                        _conf.get("token", "ERROR, FORGOT YOUR TOKEN IN CONF"),
+                        log_handler=logHandler
+                )
 
-        @self.client.event
-        async def on_message(message):
-            if message.author == self.client.user:
-                return
+@client.event
+async def on_ready():
+    print(f'We have logged in as {client.user}')
 
-            if message.content.startswith('$hello'):
-                await message.channel.send('Hello!')
+@client.event
+async def on_message(message):
+    if message.author == client.user:
+        return
 
+    if message.content.startswith('$hello'):
+        await message.channel.send('Hello!')
 
-        def run(self):
-            _conf = self.conf.get("core",{})
-            logHandler = logging.FileHandler(
-                                        filename=_conf.get("log_path", "discord_aleena.log"), 
-                                        encoding="utf-8",
-                                        mode="a"
-                                    )
-
-            self.client.run(
-                            _conf.get("token", "ERROR, FORGOT YOUR TOKEN IN CONF"),
-                            log_handler=logHandler
-                    )
+# ------------------------------------------------------------------------------
 
 def main():
+    # argparse all of one input
     parser = argparse.ArgumentParser(
                 prog = 'AleenaBot',
                 description = 'A robit to make other robits fear being robits',
                 epilog = '(c) 2022 - now j. "greysondn" l.'
             )
     
+    parser.add_argument("conf")
     args = parser.parse_args()
+    
+    # ruamel
+    yaml = YAML()
+    confFile = yaml.load(args.conf)
+    
+    # bot
+    bot = AleenaBotDiscord(confFile)
+    bot.run()
+
+if (__name__ == "__main__"):
+    main()
