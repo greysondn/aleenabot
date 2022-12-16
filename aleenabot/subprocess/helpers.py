@@ -1,6 +1,7 @@
 import asyncio as aio
 from collections import deque
 from enum import Enum
+import shlex
 from typing import Any, Awaitable, cast, Optional
 from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
@@ -135,49 +136,69 @@ class SubprocessWrapper:
 class Manager(SubprocessWrapper):
     pass
 
-class ManagerCommandParser:
-    def __init__(self):
-        pass
+class CommandParser:
+    async def __init__(self):
+        self.commands = await self.defineGroupCommand()
+        
+        self.commands["print"] = self.defineLeafCommand(
+            self.print,
+            "Prints text",
+            "_greedy"
+        )
+        
+        self.commands["echo"] = self.defineLeafCommand(
+            self.print,
+            "Prints text",
+            "_greedy"
+        )
     
-    # just an error handler, mostly
-    async def special_error(self, host:Manager, commands:deque[str], msg:InterProcessMail, err:str):
-        pass
+    async def defineLeafCommand(self, _cmd, help_txt, _args):
+        ret = {}
+        ret["_type"]        = "final"
+        ret["_cmd"]         = _cmd
+        ret["_help_txt"]    = help_txt
+        ret["_args"]        = _args
     
-    # check too many or not enough args
-    async def checkMinArgs(self, host:Manager, commands:deque[str], msg:InterProcessMail, count:int) -> bool:
-        ret:bool = False
-        
-        if (len(commands) >= count):
-            ret = True
-        else:
-            ret = False
-            await self.special_error(host, commands, msg, "not enough arguments")
-        
-        return ret
-    
-    async def checkMaxArgs(self, host:Manager, commands:deque[str], msg:InterProcessMail, count:int) -> bool:
-        ret:bool = False
-        
-        if (len(commands) <= count):
-            ret = True
-        else:
-            ret = False
-            await self.special_error(host, commands, msg, "too many arguments")
-        
+    async def defineGroupCommand(self, _children={}):
+        ret = {}
+        ret["_type"] = "group"
+        ret["_children"] = _children
         return ret
 
     # output
-    async def print(self, host:Manager, commans:deque[str], msg:InterProcessMail):
-        # slightly special handling
-        print(msg.message[6:])
+    async def print(self, txt:str):
+        print(txt)
 
     # finally run
-    async def exec(self, host:Manager, commands:deque[str], msg:InterProcessMail):
-        if (await self.checkMinArgs(host, commands, msg, 1)):
-            swp = commands.popleft()
-            
-            if (swp == "print"):
-                print("print!")
-                await self.print(host, commands, msg)
+    async def exec(self, command:str):
+        # we'll set it aside because we can
+        swp = self.commands
+        
+        # shlex
+        cm = shlex.split(command)
+        
+        # aight
+        end = False
+        while (not end):
+            if (cm[0] in swp.keys()):
+                swp = swp[cm[0]]
+                cm = cm[1:]
+                
+                # leaf?
+                if (swp["_type"] == "final"):
+                    # let's do things
+                    end = True
+                    if swp["_args"] == "_greedy":
+                        await swp["_cmd"](" ".join(cm))
+                    else:
+                        await self.print("Error: unsupported! : " + command)
+                elif (swp["_type"] == "group"):
+                    # this is fine
+                    pass
+                else:
+                    end = True
+                    await self.print("Error: unsupported type in tree! : " + command)
             else:
-                await self.special_error(host, commands, msg, "unknown arguments")
+                end = True
+                await self.print("Error: Could not find command! : " + command)
+        
