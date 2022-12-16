@@ -200,6 +200,51 @@ class CommandParser:
 
 class Manager(SubprocessWrapper):
     async def __init__(self):
+        self.name = "main"
         self.parser = CommandParser()
+        self.boxes = IOBufferSet()
+        self.tg = aio.TaskGroup()
+        self.children  = set()
+        self.childBoxes = dict()
         
+        await self.addChild(self)
     
+    async def addChild(self, child:SubprocessWrapper):
+        if (child not in self.children):
+            self.children.add(child)
+            self.childBoxes[child.name] = child
+
+    async def stdinHandler(self):
+        # wait for this to officially start
+        while (not self.boxes.inbox.stdin.isRunning):
+            await aio.sleep(1)
+            
+        # okay, it's running
+        while (self.boxes.inbox.stdin.isRunning):
+            incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+            
+            await self.parser.exec(incoming.message, incoming)
+            
+            await aio.sleep(1)
+
+    async def mailroom(self):
+        # aight, let's do this
+        while (not self.processRunning):
+            await aio.sleep(1)
+        while (self.processRunning):
+            for child in self.children:
+                _ch = cast(SubprocessWrapper, child)
+                if not(_ch.boxes.outbox.stdout.empty):
+                    msg = await _ch.boxes.outbox.stdout.get()
+                    # do we know where it goes?
+                    if (msg.receiver in self.childBoxes.keys()):
+                        await self.childBoxes[msg.receiver].boxes.inbox.stdin.put(msg)
+                    else:
+                        print("Discarded dead letter to " + msg.receiver)
+                
+                await aio.sleep(1)
+    
+    async def start(self):
+        async with self.tg as tg:
+            tg.create_task(self.mailroom())
+            tg.create_task(self.stdinHandler())
