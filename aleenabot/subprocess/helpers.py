@@ -133,8 +133,8 @@ class SubprocessWrapper:
             await aio.sleep(1)
 
 class CommandParser:
-    async def __init__(self):
-        self.commands = await self.defineGroupCommand()
+    def __init__(self):
+        self.commands = self.defineGroupCommand()
         
         self.commands["print"] = self.defineLeafCommand(
             self.print,
@@ -148,14 +148,14 @@ class CommandParser:
             "_greedy"
         )
     
-    async def defineLeafCommand(self, _cmd, help_txt, _args):
+    def defineLeafCommand(self, _cmd, help_txt, _args):
         ret = {}
         ret["_type"]        = "final"
         ret["_cmd"]         = _cmd
         ret["_help_txt"]    = help_txt
         ret["_args"]        = _args
     
-    async def defineGroupCommand(self, _children={}):
+    def defineGroupCommand(self, _children={}):
         ret = {}
         ret["_type"] = "group"
         ret["_children"] = _children
@@ -199,7 +199,7 @@ class CommandParser:
                 await self.print("Error: Could not find command! : " + command)
 
 class Manager(SubprocessWrapper):
-    async def __init__(self):
+    def __init__(self):
         self.name = "main"
         self.parser = CommandParser()
         self.boxes = IOBufferSet()
@@ -207,7 +207,9 @@ class Manager(SubprocessWrapper):
         self.children  = set()
         self.childBoxes = dict()
         
-        await self.addChild(self)
+        # self.addChild(self)
+        self.children.add(self)
+        self.childBoxes[self.name] = self
     
     async def addChild(self, child:SubprocessWrapper):
         if (child not in self.children):
