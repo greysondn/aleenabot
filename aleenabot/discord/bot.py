@@ -4,7 +4,32 @@ import discord
 import logging
 
 intents = discord.Intents.default()
+
+# auto_moderation
+# auto_moderation_configuration
+# auto_moderation_execution
+# bans
+# dm_messages
+# dm_reactions
+# dm_typing
+# emojis
+# emojis_and_stickers
+# guild_messages
+# guild_reactions
+# guild_scheduled_events
+# guild_typing
+# guilds
+# integrations
+# invites
+# members
 intents.message_content = True
+# messages
+# presences
+# reactions
+# typing
+# value
+# voice_states
+# webhooks
 
 client = discord.Client(intents=intents)
 
