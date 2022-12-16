@@ -1,5 +1,6 @@
 # This example requires the 'message_content' intent.
 
+import argparse
 import discord
 import logging
 
@@ -60,3 +61,12 @@ client.run(
                 'your token here',
                 log_handler=logHandler
           )
+
+def main():
+    parser = argparse.ArgumentParser(
+                prog = 'AleenaBot',
+                description = 'A robit to make other robits fear being robits',
+                epilog = '(c) 2022 - now j. "greysondn" l.'
+            )
+    
+    args = parser.parse_args()
