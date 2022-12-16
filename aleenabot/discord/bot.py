@@ -5,7 +5,6 @@ import discord
 import logging
 
 class AleenaBotDiscord():
-    
     # figuring out what intents I need is like
     # https://discordpy.readthedocs.io/en/stable/intents.html
     # provides checklist
