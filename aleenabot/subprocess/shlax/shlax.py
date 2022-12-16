@@ -7,6 +7,7 @@ import aleenabot.subprocess.buffer as aspBuffer
 import aleenabot.subprocess.helpers as aHelpers
 import io
 
+aio = asyncio
 
 class ShlaxBuffers(aspBuffer.IOBufferSet):
     def __init__(self):
@@ -41,7 +42,7 @@ class ShlaxSubprocessOutputsProtocol(asyncio.SubprocessProtocol):
         self.proc.exit_future.set_result(True)
 
 class ShlaxSubprocess:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False):
+    def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:aio.TaskGroup=aio.TaskGroup()):
         # guard against empty args
         if (len(args) == 1 and ' ' in args[0]):
             args = ['sh', '-euc', args[0]]
@@ -77,6 +78,9 @@ class ShlaxSubprocess:
         self.started:bool = False
         '''Whether or not this process has had `start` called.'''
         
+        self.taskgroup:aio.TaskGroup = tg
+        '''Taskgroup, so that this can register itself the easy way'''
+        
         self.waited:bool = False
         '''whether or not the underlying process has had a wait for join called'''
 
@@ -93,13 +97,9 @@ class ShlaxSubprocess:
         self.transport, self.protocol = await loop.subprocess_exec(
             lambda: ShlaxSubprocessOutputsProtocol(self),
             *self.args,
-            stdin=self.stdInPipe,
+            stdin=self.inPipe,
         )
-        # note on above fixme:
-        # proc.stdin.write(input)
-        # await process.stdin.drain() # flush
         
-        self.stdInPipe = None
         self.started = True
 
     # basically a join innit?

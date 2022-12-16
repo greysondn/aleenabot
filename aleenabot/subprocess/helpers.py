@@ -3,6 +3,7 @@ from collections import deque
 from enum import Enum
 from typing import Any, Awaitable, cast, Optional
 from aleenabot.subprocess.buffer import IOBufferSet
+from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 
 async def waitUntilFunctionTrue(function_, pollIntervalInSeconds:float = 1.0):
     while (function_() != True):
@@ -70,11 +71,11 @@ class InterProcessMail:
             raise TypeError("InterprocessMail can only compare to InterprocessMail")
         return ret
 
-class CoroutineWrapper:
-    def __init__(self, name:str="Unknown"):
+class SubprocessWrapper:
+    def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:aio.TaskGroup=aio.TaskGroup()):
         self.name:str    = name
-        self.boxes       = IOBufferSet()
-
+        self.proc        = ShlaxSubprocess(args, name=name, quiet=quiet, tg=tg)
+        self.boxes       = self.proc.boxes
         self.processRunning  = False
         self.processPoisoned = False
 
@@ -133,6 +134,8 @@ class CoroutineWrapper:
     async def mainProcess(self):
         # tell everything we're running
         await self.boxes.startAll()
+        # start program
+        await self.proc.start()
         self.processRunning = True
     
     async def stdinHandler(self):
@@ -145,56 +148,9 @@ class CoroutineWrapper:
         # okay, it's running
         while (self.boxes.inbox.stdin.isRunning):
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
-            # TODO: actually input stdin
-    
-    async def outStdToQueue(self):
-        # TODO: Enable poisoning...?
-        
-        # wait for this to officially start
-        while (not self.running["outStdToQueue"]):
-            await aio.sleep(1)
-
-        # okay, it's running
-        while self.running["outStdToQueue"]:
-            # FIXME: WOOPS
-            swp = await self.stdout.get()
-            outgoing:str = "print" + swp[1] # fix type, trim
             
-            await self.stdout.put((1000, outgoing))
-        
-    async def outQueueToBox(self):
-        # TODO: write docs about how this is meant to override.
-        
-        # meanwhile, hae a sort of template for simple std-to-main-output
-        
-        # wait for this to officially start
-        while (not self.running["outQueueToBox"]):
-            await aio.sleep(1)
-        
-        # okay, it's running
-        while self.running["outQueueToBox"]:
-            msg = (await self.stdout.get())[1]
-            print(f"{self.name} : outqueuetobox : {msg}")
-            await self.message(message=msg)
-        
-    async def errStdToQueue(self):
-        # wait for this to officially start
-        while (not self.running["errStdToQueue"]):
-            await aio.sleep(1)
-        
-        # okay, it's running
-        while self.running["errStdToQueue"]:
-           await aio.sleep(1) 
-
-    async def errQueueToBox(self):
-        # TODO: write docs about how this is meant to override.
-        
-        # wait for this to officially start
-        while (not self.running["errQueueToBox"]):
-            await aio.sleep(1)
-        
-        # okay, it's running
-        while self.running["errQueueToBox"]:
+            self.proc.inPipe.addLine(incoming.message)
+            
             await aio.sleep(1)
 
 class ProcessWrapper(CoroutineWrapper):
