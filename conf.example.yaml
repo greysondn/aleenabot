@@ -1,0 +1,31 @@
+# stuff strictly related to discord
+discord:
+    # bot intents
+    intents:
+      # https://discordpy.readthedocs.io/en/stable/intents.html
+      # intents checklist
+      auto_moderation:                false
+      auto_moderation_configuration:  false
+      auto_moderation_execution:      false
+      bans:                           false
+      dm_messages:                    false
+      dm_reactions:                   false
+      dm_typing:                      false
+      emojis:                         false
+      emojis_and_stickers:            false
+      guild_messages:                 false
+      guild_reactions:                false
+      guild_scheduled_events:         false
+      guild_typing:                   false
+      guilds:                         false
+      integrations:                   false
+      invites:                        false
+      members:                        false
+      message_content:                false
+      messages:                       false
+      presences:                      false
+      reactions:                      false
+      typing:                         false
+      value:                          false
+      voice_states:                   false
+      webhooks:                       false

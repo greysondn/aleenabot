@@ -5,36 +5,35 @@ import discord
 import logging
 
 class AleenaBotDiscord():
-    # figuring out what intents I need is like
-    # https://discordpy.readthedocs.io/en/stable/intents.html
-    # provides checklist
-
-    intents = discord.Intents.default()
-    # auto_moderation
-    # auto_moderation_configuration
-    # auto_moderation_execution
-    # bans
-    # dm_messages
-    # dm_reactions
-    # dm_typing
-    # emojis
-    # emojis_and_stickers
-    # guild_messages
-    # guild_reactions
-    # guild_scheduled_events
-    # guild_typing
-    # guilds
-    # integrations
-    # invites
-    # members
-    intents.message_content = True
-    # messages
-    # presences
-    # reactions
-    # typing
-    # value
-    # voice_states
-    # webhooks
+    def __init__(self, conf:dict):
+        # intents
+        self.intents = discord.Intents.default()
+        _intents = conf.get("discord",{}).get("intents",{})
+        self.intents.auto_moderation = _intents.get("auto_moderation", self.intents.auto_moderation)
+        self.intents.auto_moderation_configuration = _intents.get("auto_moderation_configuration", self.intents.auto_moderation_configuration)
+        self.intents.auto_moderation_execution = _intents.get("auto_moderation_execution", self.intents.auto_moderation_execution)
+        self.intents.bans = _intents.get("bans", self.intents.bans)
+        self.intents.dm_messages = _intents.get("dm_messages", self.intents.dm_messages)
+        self.intents.dm_reactions = _intents.get("dm_reactions", self.intents.dm_reactions)
+        self.intents.dm_typing = _intents.get("dm_typing", self.intents.dm_typing)
+        self.intents.emojis = _intents.get("emojis", self.intents.emojis)
+        self.intents.emojis_and_stickers = _intents.get("emojis_and_stickers", self.intents.emojis_and_stickers)
+        self.intents.guild_messages = _intents.get("guild_messages", self.intents.guild_messages)
+        self.intents.guild_reactions = _intents.get("guild_reactions", self.intents.guild_reactions)
+        self.intents.guild_scheduled_events = _intents.get("guild_scheduled_events", self.intents.guild_scheduled_events)
+        self.intents.guild_typing = _intents.get("guild_typing", self.intents.guild_typing)
+        self.intents.guilds = _intents.get("guilds", self.intents.guilds)
+        self.intents.integrations = _intents.get("integrations", self.intents.integrations)
+        self.intents.invites = _intents.get("invites", self.intents.invites)
+        self.intents.members = _intents.get("members", self.intents.members)
+        self.intents.messages = _intents.get("messages", self.intents.messages)
+        self.intents.presences = _intents.get("presences", self.intents.presences)
+        self.intents.reactions = _intents.get("reactions", self.intents.reactions)
+        self.intents.typing = _intents.get("typing", self.intents.typing)
+        self.intents.value = _intents.get("value", self.intents.value)
+        self.intents.voice_states = _intents.get("voice_states", self.intents.voice_states)
+        self.intents.webhooks = _intents.get("webhooks", self.intents.webhooks)
+        
 
     client = discord.Client(intents=intents)
 
