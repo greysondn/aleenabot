@@ -132,10 +132,6 @@ class SubprocessWrapper:
             
             await aio.sleep(1)
 
-        
-class Manager(SubprocessWrapper):
-    pass
-
 class CommandParser:
     async def __init__(self):
         self.commands = await self.defineGroupCommand()
@@ -170,7 +166,7 @@ class CommandParser:
         print(txt)
 
     # finally run
-    async def exec(self, command:str):
+    async def exec(self, command:str, msg:InterProcessMail|None = None):
         # we'll set it aside because we can
         swp = self.commands
         
@@ -201,4 +197,9 @@ class CommandParser:
             else:
                 end = True
                 await self.print("Error: Could not find command! : " + command)
+
+class Manager(SubprocessWrapper):
+    async def __init__(self):
+        self.parser = CommandParser()
         
+    
