@@ -73,11 +73,12 @@ class InterProcessMail:
 
 class SubprocessWrapper:
     def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:aio.TaskGroup=aio.TaskGroup()):
-        self.name:str    = name
-        self.proc        = ShlaxSubprocess(args, name=name, quiet=quiet, tg=tg)
-        self.boxes       = self.proc.boxes
-        self.processRunning  = False
-        self.processPoisoned = False
+        self.name:str         = name
+        self.tg:aio.TaskGroup = tg
+        self.proc             = ShlaxSubprocess(args, name=name, quiet=quiet, tg=tg)
+        self.boxes            = self.proc.boxes
+        self.processRunning   = False
+        self.processPoisoned  = False
 
     # REMOVED: Loopback check function
 
@@ -101,33 +102,10 @@ class SubprocessWrapper:
         # and then huck it into the outbox
         # REMOVED: Loopback check call
 
-    async def createTaskAndMessageMain(self, coro):
-        task = aio.create_task(coro)
-        
-        await self.message(
-            receiver = "main",
-            message = "task add payload",
-            payload = task
-        )
-
     async def main(self):
-        #
-        # TODO: python 3.11 - rewrite with a taskgroup
         # this is pretty epic, really, though
-
-        # let's just do it as a list, shall we?
-        tasks = [
-            self.mainProcess(),
-            self.stdinHandler(),
-            self.outStdToQueue(),
-            self.outQueueToBox(),
-            self.errStdToQueue(),
-            self.errQueueToBox(),
-        ]
-        
-        # gets weird right about now, I think
-        for task in tasks:
-            await self.createTaskAndMessageMain(task)
+        self.tg.create_task(self.mainProcess())
+        self.tg.create_task(self.stdinHandler())
             
         # I think that's it?
 
@@ -153,130 +131,9 @@ class SubprocessWrapper:
             
             await aio.sleep(1)
 
-class ProcessWrapper(CoroutineWrapper):
-    def __init__(self, name:str = "Unknown", command:str=""):
-        # parent constructor
-        super().__init__(name)
         
-        # unique to this object
-        self.command:str = command
-        self.process:Any = None # uhhh?
-        
-    async def mainProcess(self):
-        # ignite process like a lunatic
-        process = await aio.create_subprocess_shell(
-            self.command,
-            stdin =  aio.subprocess.PIPE,
-            stdout = aio.subprocess.PIPE,
-            stderr = aio.subprocess.PIPE
-        )
-        
-        # set process so we can access std streams
-        self.process = process
-        
-        # Parent
-        await super().mainProcess()
-        
-        # remainders
-        self.running["childrenOutboxHandler"] = True
-        
-    # for now the only overridden one was this one
-    async def outStdToQueue(self):
-        # TODO: Enable poisoning...?
-        
-        # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "outStdToQueue", True)
-
-        # okay, it's running
-        while self.running["outStdToQueue"]:
-            # this can literally go so fast nothing else gets a chance to
-            # run. That was my hard lesson for today.
-            await aio.sleep(1)
-            latest:bytes = await self.process.stdout.readline()
-            if (len(latest) > 0):
-                decoded:str = latest.decode()
-
-                # and now put it on the queue
-                await self.stdout.put((1000, "print " + decoded))
-
-        
-class Manager(CoroutineWrapper):
-    def __init__(self, name="Unknown"):
-        # parent, and fixing some stuff up
-        super().__init__(name)
-        
-        self.tasks:set[aio.Task] = set()
-        self.children:dict[str, "CoroutineWrapper"] = {}
-        self.commandParser:"ManagerCommandParser" = ManagerCommandParser()
-
-        self.running["childrenOutboxHandler"] = False
-        self.poison["childrenOutboxHandler"]   = False
-
-    async def main(self):
-        #
-        # TODO: python 3.11 - rewrite with a taskgroup
-        # this is pretty epic, really, though
-
-        # let's just do it as a list, shall we?
-        tasks = [
-            self.childrenOutboxHandler(),
-        ]
-        
-        # gets weird right about now, I think
-        for task in tasks:
-            await self.createTaskAndMessageMain(task)
-            
-        # I think that's it?
-
-    async def mainProcess(self):
-        # Parent
-        await super().mainProcess()
-        
-        # remainders
-        self.running["childrenOutboxHandler"] = True
-    
-    async def addTask(self, task:aio.Task):
-        self.tasks.add(task)
-        task.add_done_callback(self.tasks.discard)
-
-    async def addChild(self, child:CoroutineWrapper):
-        self.children[child.name] = child
-    
-    async def childrenOutboxHandler(self):
-        # TODO: write docs about how this is meant to override.
-        # meanwhile, this is basically a template
-        
-        # TODO: Implement poison pilling
-        
-        # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "childrenOutboxHandler", True)
-        
-        # okay, it's running
-        while self.running["childrenOutboxHandler"]:
-            # create a list of current children this loop
-            childList = list(self.children.values())
-            
-            print(childList)
-            
-            
-            for child in childList:
-                # make sure it's still alive, basically
-                if (not child.outbox.empty()):
-                    msg:InterProcessMail = (await child.outbox.get())[1]
-                    await self.inbox.put(msg)
-    
-    async def inBoxToQueue(self):
-        # wait for this to officially start
-        await waitUntilDictEntryEquals(self.running, "inBoxToQueue", True)
-
-        # okay, it's running
-        while self.running["inBoxToQueue"]:
-            incoming:InterProcessMail = cast(InterProcessMail, (await self.inbox.get())[1])
-            
-            if (incoming.receiver == self.name):
-                # handle individual commands here
-                commands:deque[str] = deque(incoming.message.split())
-                await self.commandParser.exec(self, commands, incoming)
+class Manager(SubprocessWrapper):
+    pass
 
 class ManagerCommandParser:
     def __init__(self):
@@ -308,31 +165,6 @@ class ManagerCommandParser:
             await self.special_error(host, commands, msg, "too many arguments")
         
         return ret
-    
-    # task
-    async def task_add_payload(self, host:Manager, commands:deque[str], msg:InterProcessMail):
-        if (await self.checkMaxArgs(host, commands, msg, 0)):
-            # add it
-            await host.addTask(msg.payload)
-            
-    
-    async def task_add(self, host:Manager, commands:deque[str], msg:InterProcessMail):
-        if (await self.checkMinArgs(host, commands, msg, 1)):
-            swp = commands.popleft()
-            
-            if (swp == "payload"):
-                await self.task_add_payload(host, commands, msg)
-            else:
-                await self.special_error(host, commands, msg, "unknown arguments")
-    
-    async def task(self, host:Manager, commands:deque[str], msg:InterProcessMail):
-        if (await self.checkMinArgs(host, commands, msg, 1)):
-            swp = commands.popleft()
-            
-            if (swp == "add"):
-                await self.task_add(host, commands, msg)
-            else:
-                await self.special_error(host, commands, msg, "unknown arguments")
 
     # output
     async def print(self, host:Manager, commans:deque[str], msg:InterProcessMail):
@@ -344,9 +176,7 @@ class ManagerCommandParser:
         if (await self.checkMinArgs(host, commands, msg, 1)):
             swp = commands.popleft()
             
-            if (swp == "task"):
-                await self.task(host, commands, msg)
-            elif (swp == "print"):
+            if (swp == "print"):
                 print("print!")
                 await self.print(host, commands, msg)
             else:
