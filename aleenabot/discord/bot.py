@@ -1,8 +1,10 @@
 # This example requires the 'message_content' intent.
 
 import argparse
+import asyncio as aio
 import discord
 import logging
+from random import choice
 from ruamel.yaml import YAML
 
 # godawful scoping
@@ -93,8 +95,26 @@ def main():
     yaml = YAML()
     confFile = yaml.load(args.conf)
     
+    
+    
     # bot
     bot = AleenaBotDiscord(confFile)
+    appid = aio.run(bot.client.application_info())
+    
+    # boot phrases
+    start_phrases = [
+          "Johnny Five is ALIVE",                                               # Johnny 5
+          "To act too soon could seal their fate.",                             # Sonic Underground opening
+          "Would you like to play global thermonuclear war?",                   # WarGames
+          "Your light is going out on me.",                                     # The Megas
+    ]
+    
+    print("-------------------------------------------------------------------")
+    print(choice(start_phrases))
+    print("-------------------------------------------------------------------")
+    
+    # whack the button
+    print(discord.utils.oauth_url(appid.id))
     bot.run()
 
 if (__name__ == "__main__"):
