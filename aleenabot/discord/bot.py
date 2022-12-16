@@ -2,69 +2,67 @@
 
 import argparse
 import asyncio as aio
+from typing import cast
 import discord
 import logging
 from random import choice
 from ruamel.yaml import YAML
 
-# godawful scoping
-client:discord.Client   = None  # type: ignore 
-bot:"AleenaBotDiscord"  = None  # type: ignore
+def debugPrint(txt:str):
+    if True:
+        print(str)
 
-class AleenaBotDiscord():
-    def __init__(self, conf:dict):
-        # config
-        self.conf = conf.get("discord", {})
-        
-        # intents
-        self.intents = discord.Intents.default()
-        _intents = self.conf.get("intents",{})
-        self.intents.auto_moderation = _intents.get("auto_moderation", self.intents.auto_moderation)
-        self.intents.auto_moderation_configuration = _intents.get("auto_moderation_configuration", self.intents.auto_moderation_configuration)
-        self.intents.auto_moderation_execution = _intents.get("auto_moderation_execution", self.intents.auto_moderation_execution)
-        self.intents.bans = _intents.get("bans", self.intents.bans)
-        self.intents.dm_messages = _intents.get("dm_messages", self.intents.dm_messages)
-        self.intents.dm_reactions = _intents.get("dm_reactions", self.intents.dm_reactions)
-        self.intents.dm_typing = _intents.get("dm_typing", self.intents.dm_typing)
-        self.intents.emojis = _intents.get("emojis", self.intents.emojis)
-        self.intents.emojis_and_stickers = _intents.get("emojis_and_stickers", self.intents.emojis_and_stickers)
-        self.intents.guild_messages = _intents.get("guild_messages", self.intents.guild_messages)
-        self.intents.guild_reactions = _intents.get("guild_reactions", self.intents.guild_reactions)
-        self.intents.guild_scheduled_events = _intents.get("guild_scheduled_events", self.intents.guild_scheduled_events)
-        self.intents.guild_typing = _intents.get("guild_typing", self.intents.guild_typing)
-        self.intents.guilds = _intents.get("guilds", self.intents.guilds)
-        self.intents.integrations = _intents.get("integrations", self.intents.integrations)
-        self.intents.invites = _intents.get("invites", self.intents.invites)
-        self.intents.members = _intents.get("members", self.intents.members)
-        self.intents.messages = _intents.get("messages", self.intents.messages)
-        self.intents.presences = _intents.get("presences", self.intents.presences)
-        self.intents.reactions = _intents.get("reactions", self.intents.reactions)
-        self.intents.typing = _intents.get("typing", self.intents.typing)
-        self.intents.value = _intents.get("value", self.intents.value)
-        self.intents.voice_states = _intents.get("voice_states", self.intents.voice_states)
-        self.intents.webhooks = _intents.get("webhooks", self.intents.webhooks)
-        
-        # client
-        self.client = discord.Client(
-                                        intents=self.intents
-                                    )
-        client = self.client
-        
-        # analog to self
-        bot = self
-        
-    def run(self):
-        _conf = self.conf.get("core",{})
-        logHandler = logging.FileHandler(
-                                    filename=_conf.get("log_path", "discord_aleena.log"), 
-                                    encoding="utf-8",
-                                    mode="a"
-                                )
+# ruamel
+yaml=YAML()
+conf = yaml.load(open("aleena.yaml"))
 
-        self.client.run(
-                        _conf.get("token", "ERROR, FORGOT YOUR TOKEN IN CONF"),
-                        log_handler=logHandler
-                )
+
+_intents = conf.get("intents",{})
+_mainconf = conf.get("core", {})
+
+
+# intents
+intents = discord.Intents.default()
+
+intents.auto_moderation = _intents.get("auto_moderation", intents.auto_moderation)
+intents.auto_moderation_configuration = _intents.get("auto_moderation_configuration", intents.auto_moderation_configuration)
+intents.auto_moderation_execution = _intents.get("auto_moderation_execution", intents.auto_moderation_execution)
+intents.bans = _intents.get("bans", intents.bans)
+intents.dm_messages = _intents.get("dm_messages", intents.dm_messages)
+intents.dm_reactions = _intents.get("dm_reactions", intents.dm_reactions)
+intents.dm_typing = _intents.get("dm_typing", intents.dm_typing)
+intents.emojis = _intents.get("emojis", intents.emojis)
+intents.emojis_and_stickers = _intents.get("emojis_and_stickers", intents.emojis_and_stickers)
+intents.guild_messages = _intents.get("guild_messages", intents.guild_messages)
+intents.guild_reactions = _intents.get("guild_reactions", intents.guild_reactions)
+intents.guild_scheduled_events = _intents.get("guild_scheduled_events", intents.guild_scheduled_events)
+intents.guild_typing = _intents.get("guild_typing", intents.guild_typing)
+intents.guilds = _intents.get("guilds", intents.guilds)
+intents.integrations = _intents.get("integrations", intents.integrations)
+intents.invites = _intents.get("invites", intents.invites)
+intents.members = _intents.get("members", intents.members)
+intents.messages = _intents.get("messages", intents.messages)
+intents.presences = _intents.get("presences", intents.presences)
+intents.reactions = _intents.get("reactions", intents.reactions)
+intents.typing = _intents.get("typing", intents.typing)
+intents.value = _intents.get("value", intents.value)
+intents.voice_states = _intents.get("voice_states", intents.voice_states)
+intents.webhooks = _intents.get("webhooks", intents.webhooks)
+        
+# client
+client = discord.Client(
+                                intents=intents
+                            )
+
+
+
+logHandler = logging.FileHandler(
+                            filename=_mainconf.get("log_path", "discord_aleena.log"), 
+                            encoding="utf-8",
+                            mode="a"
+                        )
+
+
 
 @client.event
 async def on_ready():
@@ -80,42 +78,25 @@ async def on_message(message):
 
 # ------------------------------------------------------------------------------
 
-def main():
-    # argparse all of one input
-    parser = argparse.ArgumentParser(
-                prog = 'AleenaBot',
-                description = 'A robit to make other robits fear being robits',
-                epilog = '(c) 2022 - now j. "greysondn" l.'
-            )
-    
-    parser.add_argument("conf")
-    args = parser.parse_args()
-    
-    # ruamel
-    yaml = YAML()
-    confFile = yaml.load(args.conf)
-    
-    
-    
-    # bot
-    bot = AleenaBotDiscord(confFile)
-    appid = aio.run(bot.client.application_info())
-    
-    # boot phrases
-    start_phrases = [
-          "Johnny Five is ALIVE",                                               # Johnny 5
-          "To act too soon could seal their fate.",                             # Sonic Underground opening
-          "Would you like to play global thermonuclear war?",                   # WarGames
-          "Your light is going out on me.",                                     # The Megas
-    ]
-    
-    print("-------------------------------------------------------------------")
-    print(choice(start_phrases))
-    print("-------------------------------------------------------------------")
-    
-    # whack the button
-    print(discord.utils.oauth_url(appid.id))
-    bot.run()
+client.run(
+                _mainconf.get("token", "ERROR, FORGOT YOUR TOKEN IN CONF"),
+                log_handler=logHandler
+        )
 
-if (__name__ == "__main__"):
-    main()
+# bot
+appid = aio.run(client.application_info())
+
+# boot phrases
+start_phrases = [
+        "Johnny Five is ALIVE",                                               # Johnny 5
+        "To act too soon could seal their fate.",                             # Sonic Underground opening
+        "Would you like to play global thermonuclear war?",                   # WarGames
+        "Your light is going out on me.",                                     # The Megas
+]
+
+print("-------------------------------------------------------------------")
+print(choice(start_phrases))
+print("-------------------------------------------------------------------")
+
+# whack the button
+print(discord.utils.oauth_url(appid.id))
