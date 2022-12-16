@@ -1,5 +1,9 @@
 # stuff strictly related to discord
 discord:
+    # core config stuff
+    core:
+        token:    "never commit this"
+        log_path: "path/to/log.file"
     # bot intents
     intents:
       # https://discordpy.readthedocs.io/en/stable/intents.html

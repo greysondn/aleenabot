@@ -6,9 +6,12 @@ import logging
 
 class AleenaBotDiscord():
     def __init__(self, conf:dict):
+        # config
+        self.conf = conf.get("discord", {})
+        
         # intents
         self.intents = discord.Intents.default()
-        _intents = conf.get("discord",{}).get("intents",{})
+        _intents = self.conf.get("intents",{})
         self.intents.auto_moderation = _intents.get("auto_moderation", self.intents.auto_moderation)
         self.intents.auto_moderation_configuration = _intents.get("auto_moderation_configuration", self.intents.auto_moderation_configuration)
         self.intents.auto_moderation_execution = _intents.get("auto_moderation_execution", self.intents.auto_moderation_execution)
@@ -34,33 +37,36 @@ class AleenaBotDiscord():
         self.intents.voice_states = _intents.get("voice_states", self.intents.voice_states)
         self.intents.webhooks = _intents.get("webhooks", self.intents.webhooks)
         
+        # client
+        self.client = discord.Client(
+                                        intents=self.intents
+                                    )
 
-    client = discord.Client(intents=intents)
+        @self.client.event
+        async def on_ready():
+            print(f'We have logged in as {self.client.user}')
 
-    @client.event
-    async def on_ready():
-        print(f'We have logged in as {client.user}')
+        @self.client.event
+        async def on_message(message):
+            if message.author == self.client.user:
+                return
 
-    @client.event
-    async def on_message(message):
-        if message.author == client.user:
-            return
-
-        if message.content.startswith('$hello'):
-            await message.channel.send('Hello!')
+            if message.content.startswith('$hello'):
+                await message.channel.send('Hello!')
 
 
-    logHandler = logging.FileHandler(
-                                        filename="discord.log", 
+        def run(self):
+            _conf = self.conf.get("core",{})
+            logHandler = logging.FileHandler(
+                                        filename=_conf.get("log_path", "discord_aleena.log"), 
                                         encoding="utf-8",
                                         mode="a"
                                     )
 
-
-    client.run(
-                    'your token here',
-                    log_handler=logHandler
-            )
+            self.client.run(
+                            _conf.get("token", "ERROR, FORGOT YOUR TOKEN IN CONF"),
+                            log_handler=logHandler
+                    )
 
 def main():
     parser = argparse.ArgumentParser(
