@@ -73,9 +73,9 @@ class InterProcessMail:
         return ret
 
 class SubprocessWrapper:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False):
+    def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
         self.name:str         = name
-        self.tg:aio.TaskGroup = None # type: ignore
+        self.tg:set           = tg
         self.proc             = ShlaxSubprocess(args, name=name, quiet=quiet)
         self.boxes            = self.proc.boxes
         self.processRunning   = False
@@ -103,11 +103,15 @@ class SubprocessWrapper:
         # and then huck it into the outbox
         # REMOVED: Loopback check call
 
+    def _addTaskToTg(self, task):
+        self.tg.add(task)
+        task.add_done_callback(self.tg.discard)
+
     async def main(self):
         # this is pretty epic, really, though
-        self.tg.create_task(self.mainProcess())
-        self.tg.create_task(self.stdinHandler())
-            
+        self._addTaskToTg(aio.create_task(self.mainProcess()))
+        self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        
         # I think that's it?
 
     async def mainProcess(self):
@@ -199,11 +203,11 @@ class CommandParser:
                 await self.print("Error: Could not find command! : " + command)
 
 class Manager(SubprocessWrapper):
-    def __init__(self):
+    def __init__(self, tg:set = set()):
         self.name = "main"
         self.parser = CommandParser()
         self.boxes = IOBufferSet()
-        self.tg:aio.TaskGroup = None # type: ignore        
+        self.tg:set     = tg
         self.children  = set()
         self.childBoxes = dict()
         
@@ -247,7 +251,5 @@ class Manager(SubprocessWrapper):
                 await aio.sleep(1)
     
     async def start(self):
-        async with aio.TaskGroup() as tg:
-            self.tg = tg
-            tg.create_task(self.mailroom())
-            tg.create_task(self.stdinHandler())
+        self._addTaskToTg(self.mailroom())
+        self._addTaskToTg(self.stdinHandler())
