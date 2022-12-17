@@ -148,7 +148,7 @@ class Manager(SubprocessWrapper):
         self.processPoisoned  = False
         
         # self.addChild(self)
-        self.children.add(self)
+        # self.children.add(self)
         self.childBoxes[self.name] = self
     
     async def addChild(self, child:SubprocessWrapper):
@@ -174,7 +174,7 @@ class Manager(SubprocessWrapper):
         while (not self.processRunning):
             await aio.sleep(1)
         while (self.processRunning):
-            for child in self.children:
+            for child in self.children.union({self}):
                 _ch = cast(SubprocessWrapper, child)
                 if not(_ch.boxes.outbox.stdout.empty):
                     msg = await _ch.boxes.outbox.stdout.get()

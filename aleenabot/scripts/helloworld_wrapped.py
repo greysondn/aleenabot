@@ -3,8 +3,16 @@ import asyncio as aio
 
 async def aioMain():
     main = hlp.Manager()
+    proc = hlp.SubprocessWrapper(
+        'python "C:\\Users\\Dorian Greyson\\git\\aleenabot\\aleenabot\\scripts\\helloworld.py"',
+        name = "Hello World!",
+        tg = main.tg
+    )
+    
+    await main.addChild(proc)
+    
     await main.start()
-    print ("yeah, hoss")
-        
+    print ("yeah again, hoss")
+    
 if (__name__ == "__main__"):
     aio.run(aioMain())
