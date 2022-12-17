@@ -190,3 +190,6 @@ class Manager(SubprocessWrapper):
         self._addTaskToTg(aio.create_task(self.mailroom()))
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
         self.processRunning = True
+        
+        for child in self.children:
+            await child.main()
