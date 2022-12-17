@@ -144,6 +144,8 @@ class Manager(SubprocessWrapper):
         self.tg:set     = tg
         self.children  = set()
         self.childBoxes = dict()
+        self.processRunning   = False
+        self.processPoisoned  = False
         
         # self.addChild(self)
         self.children.add(self)
@@ -187,3 +189,4 @@ class Manager(SubprocessWrapper):
     async def start(self):
         self._addTaskToTg(aio.create_task(self.mailroom()))
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        self.processRunning = True
