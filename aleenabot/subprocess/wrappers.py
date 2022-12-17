@@ -185,5 +185,5 @@ class Manager(SubprocessWrapper):
                 await aio.sleep(1)
     
     async def start(self):
-        self._addTaskToTg(self.mailroom())
-        self._addTaskToTg(self.stdinHandler())
+        self._addTaskToTg(aio.create_task(self.mailroom()))
+        self._addTaskToTg(aio.create_task(self.stdinHandler()))
