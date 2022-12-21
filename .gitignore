@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 aleenabot/discord/aleena.yaml
 aleenabot/scripts/database.db
+/aleenabot/scripts/__data
