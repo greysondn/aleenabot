@@ -5,8 +5,25 @@ from peewee import FloatField
 from peewee import ForeignKeyField
 from peewee import IntegerField
 from peewee import Model
+from peewee import MySQLDatabase
+from peewee import SqliteDatabase
+
+# ------------------------------------------------------------------------------
+# database and helpers
+# ------------------------------------------------------------------------------
 
 db = DatabaseProxy()
+
+def initDB(
+        _type:str="sqlite",
+        config = {"path":"database.db", "pragmas":{"journal_mode":"wal"}}
+    ):
+    if _type == "sqlite":
+        db.initialize(SqliteDatabase(config["path"], pragmas=config["pragmas"]))
+    elif _type == "mysql":
+        raise NotImplementedError("MySQL support hasn't been written yet!")
+    else:
+        raise ValueError("Invalid database type!")
 
 # ------------------------------------------------------------------------------
 # core models
