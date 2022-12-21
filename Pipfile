@@ -11,6 +11,7 @@ pillow = "*"
 requests = "*"
 shlax = "*"
 "ruamel.yaml" = "*"
+textual = {extras = ["dev"], version = "*"}
 
 [dev-packages]
 aleenabot = {editable = true, path = "."}
