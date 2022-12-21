@@ -16,7 +16,7 @@ def createDB():
 def dbAddVanillaMinecraftOneSixteenFive():
     mod, created = db.MCMod.get_or_create(name = "Minecraft")
     version, created = db.MCMinecraftVersion.get_or_create(version="1.16.5", nickname="The Nether Update")
-    loader, created = db.MCModLoader.get_or_create(name = "Minecraft (Vanilla)")
+    loader, created = db.MCModLoader.get_or_create(name = "Minecraft")
     modVersion, created = db.MCModVersion.get_or_create(
                                                             mod = mod,
                                                             minecraftVersion = version,
