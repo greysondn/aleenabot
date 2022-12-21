@@ -202,8 +202,8 @@ dbMigrationManager.add(
     DBMigration(
         "0000",
         "0001",
-        core_0000_to_0001,
-        core_0001_to_0000,
+        mc_0000_to_0001,
+        mc_0001_to_0000,
         DBMigrationType.MINECRAFT
     )
 )
