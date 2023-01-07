@@ -176,13 +176,16 @@ def dbAddShapelessRecipesFromCSV():
 # main
 # ------------------------------------------------------------------------------
 
+def hardReset():
+    # write it down so we don't have to repeat all that again
+        createDB()
+        db.initDB()
+        dbAddVanillaMinecraftOneSixteenFive()
+        dbAddItemsFromCSV()
+
 def main():
-    # repeat it all again
-    # this is a hard migration to AKA DB 0002... which will now be 0001.
-    createDB()
-    db.initDB()
-    dbAddVanillaMinecraftOneSixteenFive()
-    dbAddItemsFromCSV()
+    pass
+
     
 if __name__ == "__main__":
     main()
