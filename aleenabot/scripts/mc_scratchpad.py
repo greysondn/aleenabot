@@ -5,6 +5,7 @@ from aleenabot.database.migration import initMigrator
 from aleenabot.database.migration import dbMigrationManager as migrator
 from aleenabot.database.migration import DBMigrationType as MGT
 import aleenabot.database.database as db
+# from itertools import permutations # maybe later
 import pandas as pd
 
 def createDB():
@@ -90,12 +91,97 @@ def dbAddItemsFromCSV():
                     i_tag, created = db.MCItemTag.get_or_create(registryName = tag.strip())
                     
                     db.MCItems_to_MCTags.get_or_create(item = item, tag = i_tag)
+
+# ------------------------------------------------------------------------------
+
+ingredientSets:list[dict[str, int]] = []
+
+def _helper_ingredients(current:dict[str,int], remaining:list[str]):
+    l_remaining = remaining.copy()
+    l_current   = current.copy()
+    
+    # still work to do?
+    if (len(l_remaining) > 0):
+        ingredient = l_remaining.pop().strip()
+        
+        if ("|" in ingredient):
+            ingredients = ingredient.split("|")
+            for i in ingredients:
+                swp = i.strip()
+                
+                # same as simple ingredient now
+                if swp not in l_current:
+                    l_current[swp] = 0
+                l_current[swp] = l_current[swp] + 1
+                
+                # next step
+                _helper_ingredients(l_current, l_remaining)
+        else:
+            # simple ingredient
+            if ingredient not in l_current:
+                l_current[ingredient] = 0
+            l_current[ingredient] = l_current[ingredient] + 1
+            
+            # next step
+            _helper_ingredients(l_current, l_remaining)
+    else:
+        # work's done.
+        ingredientSets.append(current)
+
+def dbAddShapelessRecipesFromCSV():
+    csv = pd.read_csv(".\\__data\\vanilla\\items.csv")
+
+    mc_mod         = db.MCMod.get(name = "Minecraft")
+    mc_modVersion  = db.MCModVersion.get(mod = mc_mod, version = "1.16.5")
+
+    for i in range(len(csv)):
+        # get line
+        line = csv.iloc[i]
+        
+        # check output item
+        l_item_name  = line["Output Item"].strip()
+        l_item_count = 1
+        
+        l_item_split = l_item_name.split()
+        
+        if len(l_item_split) > 1:
+            l_item_count = int(l_item_split[1].strip()[1:])
+            l_item_name  = l_item_split[0].strip
+        
+        l_output_item = db.MCItem.get(registryName=l_item_name)
+        
+        # Dynamic?
+        l_isDynamic        = False
+        if (line["Is Dynamic"] == "+"):
+            l_isDynamic    = True
+            
+        recipe, created = db.MCItem.get_or_create(
+            registryName = line["id"],
+            outputItem   = l_output_item,
+            enabled      = True,
+            outputCount  = l_item_count,
+            group        = line["Group"],
+            serializer   = line["Serializer"],
+            icon         = line["Icon"],
+            isShapeless  = True,
+            inputPattern = None,
+            station      = db.MCItem.get(registryName="minecraft:crafting_table"),
+            isDynamic    = l_isDynamic
+        )
+
+        # ingredients now
+        _helper_ingredients({}, line["Input Ingredients"].split("\n"))
+        
 # ------------------------------------------------------------------------------
 # main
 # ------------------------------------------------------------------------------
 
 def main():
+    # repeat it all again
+    # this is a hard migration to AKA DB 0002... which will now be 0001.
+    createDB()
     db.initDB()
+    dbAddVanillaMinecraftOneSixteenFive()
     dbAddItemsFromCSV()
     
 if __name__ == "__main__":

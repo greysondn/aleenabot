@@ -193,9 +193,10 @@ class MCRecipe(BaseModel):
     inputPattern = CharField(null=True)
     station      = ForeignKeyField(MCItem)
     isDynamic    = BooleanField()
+    # csv_line["Class"]
 
 class MCRecipeInput(BaseModel):
     recipe = ForeignKeyField(MCRecipe)
-    item   = ForeignKeyField(MCItem)
+    item   = ForeignKeyField(MCItemOrItemTag)
     count  = IntegerField()
     char   = CharField(null=True)

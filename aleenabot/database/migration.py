@@ -1,7 +1,10 @@
 from playhouse.migrate import SqliteDatabase
 from playhouse.migrate import SqliteMigrator
+from playhouse.migrate import migrate
 from enum import Enum
 import aleenabot.database.database as db
+from peewee import ForeignKeyField
+
 
 # types of migrations
 class DBMigrationType(Enum):
@@ -118,7 +121,7 @@ class DBMigrationManager():
 # ------------------------------------------------------------------------------
 _db = db.db
 dbMigrationManager = DBMigrationManager()
-migrator = None
+migrator = SqliteMigrator(_db) # literally any type to make it happy
 
 def initMigrator(
         _type:str="sqlite",
@@ -205,5 +208,27 @@ dbMigrationManager.add(
         mc_0000_to_0001,
         mc_0001_to_0000,
         DBMigrationType.MINECRAFT
+    )
+)
+
+# ------------------------------------------------------------------------------
+
+def core_0001_to_0002():
+    meta = db.Dbmeta.get(version=1)
+    meta.version = 2
+    meta.save()
+
+def core_0002_to_0001():
+    meta = db.Dbmeta.get(version=2)
+    meta.version = 1
+    meta.save()
+
+dbMigrationManager.add(
+    DBMigration(
+        "0001",
+        "0002",
+        core_0001_to_0002,
+        core_0002_to_0001,
+        DBMigrationType.CORE
     )
 )
