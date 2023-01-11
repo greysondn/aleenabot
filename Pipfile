@@ -13,6 +13,7 @@ shlax = "*"
 "ruamel.yaml" = "*"
 textual = {extras = ["dev"], version = "*"}
 pandas = "*"
+tqdm = "*"
 
 [dev-packages]
 aleenabot = {editable = true, path = "."}
