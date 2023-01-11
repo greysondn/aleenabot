@@ -6,6 +6,7 @@ import sys
 import aleenabot.subprocess.buffer as aspBuffer
 import aleenabot.subprocess.helpers as aHelpers
 import io
+import os
 
 aio = asyncio
 
@@ -14,6 +15,28 @@ class ShlaxBuffers(aspBuffer.IOBufferSet):
         super().__init__()
 
 class ShlaxSubprocessInputIOWrapper(io.BytesIO):
+    # Wrapping it as a file so you don't have to.
+    def __init__(self, initial_bytes=b""):
+        super().__init__(initial_bytes)
+        
+    def add(self, txt):
+        self.write(txt.encode())
+    
+    def addLine(self, txt):
+        self.add(txt + "\n")
+
+class ShlaxSubprocessOutputIOWrapper(io.BytesIO):
+    # Wrapping it as a file so you don't have to.
+    def __init__(self, initial_bytes=b""):
+        super().__init__(initial_bytes)
+        
+    def add(self, txt):
+        self.write(txt.encode())
+    
+    def addLine(self, txt):
+        self.add(txt + "\n")
+
+class ShlaxSubprocessErrorIOWrapper(io.BytesIO):
     # Wrapping it as a file so you don't have to.
     def __init__(self, initial_bytes=b""):
         super().__init__(initial_bytes)
@@ -67,7 +90,8 @@ class ShlaxSubprocess:
         """Short term buffer for stdErr, meant mostly to help only output on 
            full lines"""
         
-        self.inPipe:ShlaxSubprocessInputIOWrapper = ShlaxSubprocessInputIOWrapper()
+        self.inPipeR,self.inPipeW =os.pipe()
+        self.inPipe = self.inPipeW
         '''Direct handle on underlying process's std pipe.
         '''
         
@@ -97,7 +121,7 @@ class ShlaxSubprocess:
         self.transport, self.protocol = await loop.subprocess_exec(
             lambda: ShlaxSubprocessOutputsProtocol(self),
             *self.args,
-            stdin=self.inPipe,
+            stdin=self.inPipeR,
         )
         
         self.started = True
