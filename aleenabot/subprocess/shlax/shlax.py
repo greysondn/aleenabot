@@ -27,6 +27,8 @@ class ShlaxSubprocess:
         """Requested process plus arguments.
         
         Defaults to `sh -euc`, probably not good
+        
+        No security or bleaching done, probably not good
         """
         
         self.name:str = name
@@ -65,17 +67,11 @@ class ShlaxSubprocess:
         '''whether or not the underlying process has had a wait for join called'''
 
     async def start(self, wait=True):
-        # Get a reference to the event loop as we plan to use
-        # low-level APIs.
-        loop = asyncio.get_running_loop()
-
-        # neat but probably not meaningful
-        self.exit_future = asyncio.Future(loop=loop)
-
         # Create the subprocess controlled by DateProtocol;
         # redirect the standard output into a pipe.
-        self.transport, self.protocol = await loop.subprocess_exec(
-            *self.args,
+        
+        self.process = await aio.create_subprocess_shell(
+            " ".join(self.args),
             stdin=self.inPipeR,
             stdout=self.outPipeW,
             stderr=self.errPipeW
@@ -91,15 +87,8 @@ class ShlaxSubprocess:
         if not self.waited:
             # Wait for the subprocess exit using the process_exited()
             # method of the protocol.
-            await self.exit_future
-
-            # Close the stdout pipe.
-            self.transport.close()
+            await self.process.wait()
 
             self.waited = True
 
         return self
-
-    @functools.cached_property
-    def rc(self):
-        return self.transport.get_returncode()
