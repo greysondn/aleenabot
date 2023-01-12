@@ -38,15 +38,15 @@ class ShlaxSubprocess:
         self.quiet:bool = quiet
         """Whether this process should print to terminal/etc"""
         
-        self.outPipe = None
+        self.outPipe:asyncio.StreamReader = None # type:ignore
         '''Direct handle on underlying process's std pipe.
         '''
         
-        self.errPipe = None
+        self.errPipe:asyncio.StreamWriter = None # type:ignore
         '''Direct handle on underlying process's std pipe.
         '''
         
-        self.inPipe = None
+        self.inPipe:asyncio.StreamWriter = None # type:ignore
         '''Direct handle on underlying process's std pipe.
         '''
         
@@ -76,9 +76,9 @@ class ShlaxSubprocess:
             stderr=asyncio.subprocess.PIPE
         )
         
-        self.inPipe  = self.process.stdin
-        self.outpipe = self.process.stdout
-        self.errPipe = self.process.stderr
+        self.inPipe  = self.process.stdin  # type: ignore
+        self.outPipe = self.process.stdout # type: ignore
+        self.errPipe = self.process.stderr # type: ignore
         
         self.started = True
 
