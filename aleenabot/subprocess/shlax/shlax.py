@@ -15,15 +15,15 @@ class ShlaxBuffers(aspBuffer.IOBufferSet):
         super().__init__()
 
 class ShlaxSubprocess:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False):
-        # guard against empty args
-        if (len(args) == 1 and ' ' in args[0]):
-            args = ['sh', '-euc', args[0]]
+    def __init__(self, cmd, name:str="Unknown", quiet:bool=False):
+        # guard against empty cmd
+        if (cmd == None):
+            cmd = 'sh -euc'
         
         self.boxes:ShlaxBuffers = ShlaxBuffers()
         """I/O endpoints for this member"""
         
-        self.args = args
+        self.cmd = cmd
         """Requested process plus arguments.
         
         Defaults to `sh -euc`, probably not good
@@ -70,8 +70,10 @@ class ShlaxSubprocess:
         # Create the subprocess controlled by DateProtocol;
         # redirect the standard output into a pipe.
         
+        print(self.cmd)
+        
         self.process = await aio.create_subprocess_shell(
-            " ".join(self.args),
+            shlex.join(self.cmd),
             stdin=self.inPipeR,
             stdout=self.outPipeW,
             stderr=self.errPipeW

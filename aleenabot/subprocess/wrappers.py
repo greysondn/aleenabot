@@ -7,10 +7,10 @@ from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
 class SubprocessWrapper:
-    def __init__(self, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
+    def __init__(self, cmd, name:str="Unknown", quiet:bool=False, tg:set = set()):
         self.name:str         = name
         self.tg:set           = tg
-        self.proc             = ShlaxSubprocess(args, name=name, quiet=quiet)
+        self.proc             = ShlaxSubprocess(cmd, name=name, quiet=quiet)
         self.boxes            = self.proc.boxes
         self.processRunning   = False
         self.processPoisoned  = False
@@ -66,7 +66,7 @@ class SubprocessWrapper:
         while (self.boxes.inbox.stdin.isRunning):
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
             
-            self.proc.inPipe.addLine(incoming.message)
+            # self.proc.inPipe.addLine(incoming.message)
             
             await aio.sleep(1)
 
