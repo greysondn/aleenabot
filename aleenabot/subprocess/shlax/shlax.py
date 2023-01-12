@@ -15,10 +15,10 @@ class ShlaxBuffers(aspBuffer.IOBufferSet):
         super().__init__()
 
 class ShlaxSubprocess:
-    def __init__(self, cmd, name:str="Unknown", quiet:bool=False):
+    def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False):
         # guard against empty cmd
         if (cmd == None):
-            cmd = 'sh -euc'
+            cmd = 'sh'
         
         self.boxes:ShlaxBuffers = ShlaxBuffers()
         """I/O endpoints for this member"""
@@ -30,6 +30,8 @@ class ShlaxSubprocess:
         
         No security or bleaching done, probably not good
         """
+        
+        self.args = args
         
         self.name:str = name
         '''name of this process, mostly used for inter-routine/etc communication
@@ -69,8 +71,9 @@ class ShlaxSubprocess:
         
         print(self.cmd)
         
-        self.process = await aio.create_subprocess_shell(
-            shlex.join(self.cmd),
+        self.process = await aio.create_subprocess_exec(
+            self.cmd,
+            *self.args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE

@@ -11,10 +11,10 @@ from typing import Any, Awaitable, cast, Optional
 logging.basicConfig(level=logging.DEBUG)
 
 class SubprocessWrapper:
-    def __init__(self, cmd, name:str="Unknown", quiet:bool=False, tg:set = set()):
+    def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
         self.name:str         = name
         self.tg:set           = tg
-        self.proc             = ShlaxSubprocess(cmd, name=name, quiet=quiet)
+        self.proc             = ShlaxSubprocess(cmd, *args, name=name, quiet=quiet)
         self.boxes            = self.proc.boxes
         self.processRunning   = False
         self.processPoisoned  = False
@@ -108,16 +108,13 @@ class SubprocessWrapper:
         # okay, it's running
         stdout = self.proc.outPipe
         
-        while (self.boxes.outbox.stdout.isRunning):
+        while (self.boxes.outbox.stdout.isRunning and not stdout.at_eof()):
             logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
             
-            if (stdout.at_eof()):
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> EOF!")
-                self.boxes.outbox.stdout.isRunning = False
-            else:
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> awaiting data")
-                outgoing = await stdout.readline()
-                outgoingStr = outgoing.decode("UTF-8")
+            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> awaiting data")
+            outgoing = await stdout.readline()
+            if (len(outgoing) > 0):
+                outgoingStr = "print " + outgoing.decode("UTF-8")
                 logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> trying to mail out -> {outgoingStr.strip()}")
                 await self.message(message=outgoingStr)
             

@@ -4,7 +4,8 @@ import asyncio as aio
 async def aioMain():
     main = hlp.Manager()
     proc = hlp.SubprocessWrapper(
-        'python "C:\\Users\\Dorian Greyson\\git\\aleenabot\\aleenabot\\scripts\\helloworld.py"',
+        'python',
+        "C:\\Users\\Dorian Greyson\\git\\aleenabot\\aleenabot\\scripts\\helloworld.py",
         name = "Hello World!",
         tg = main.tg
     )
