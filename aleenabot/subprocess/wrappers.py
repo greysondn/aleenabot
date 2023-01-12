@@ -90,7 +90,7 @@ class SubprocessWrapper:
                 stdin.write(inputStr)
                 await stdin.drain()
                     
-                await aio.sleep(1)
+            await aio.sleep(1)
                 
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
 
