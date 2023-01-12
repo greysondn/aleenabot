@@ -90,22 +90,29 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
 
     async def stdoutHandler(self):
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> start")
+        
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
         while (not self.boxes.outbox.stdout.isRunning):
             await aio.sleep(1)
             
-        # okay, it's running
-        while (self.boxes.outbox.stdout.isRunning):
-            async with aiof.open(self.proc.outPipe, mode="rb") as stdout:
-                outgoing = await stdout.readline()
-                outgoingStr = outgoing.decode("UTF-8")
-                print("Yes!")
-                await self.message(message=outgoingStr)
-                
-                await aio.sleep(1)
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> stdout running")
 
+        # okay, it's running
+        async with aiof.open(self.proc.outPipe, mode="rb") as stdout:
+            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> pipe open")
+            while (self.boxes.outbox.stdout.isRunning):
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
+                    outgoing = await stdout.readline()
+                    outgoingStr = outgoing.decode("UTF-8")
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> trying to mail out -> {outgoingStr.strip()}")
+                    await self.message(message=outgoingStr)
+                    
+                    await aio.sleep(1)
+                    
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> end")
 
 class CommandParser:
     def __init__(self):
@@ -236,6 +243,6 @@ class Manager(SubprocessWrapper):
         startLen = 0
         while (len(self.tg) > 0):
             if (len(self.tg) != startLen):
-                startLen = len.self.tg
+                startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
             await aio.sleep(1)
