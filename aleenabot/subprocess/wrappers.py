@@ -69,7 +69,7 @@ class SubprocessWrapper:
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
-        while (not self.boxes.inbox.stdin.isRunning):
+        while (not self.boxes.inbox.stdin.isRunning or (self.proc.inPipe == None)):
             await aio.sleep(1)
 
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> stdin running")
@@ -100,7 +100,7 @@ class SubprocessWrapper:
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
-        while (not self.boxes.outbox.stdout.isRunning):
+        while (not self.boxes.outbox.stdout.isRunning or (self.proc.outPipe == None)):
             await aio.sleep(1)
             
         logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> stdout running")
