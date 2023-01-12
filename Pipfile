@@ -14,6 +14,7 @@ shlax = "*"
 textual = {extras = ["dev"], version = "*"}
 pandas = "*"
 tqdm = "*"
+aiofiles = "*"
 
 [dev-packages]
 aleenabot = {editable = true, path = "."}
