@@ -75,16 +75,21 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> stdin running")
         
         # okay, it's running
-        async with aiof.open(self.proc.inPipe, mode="wb") as stdin:
-            logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> pipe open")
-            while (self.boxes.inbox.stdin.isRunning):
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> loop start")
+        stdin = self.proc.inPipe
+        
+        while (self.boxes.inbox.stdin.isRunning):
+            logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> loop start")
+            if (stdin.is_closing()):
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing!")
+                self.boxes.inbox.stdin.isRunning = False
+            else:
                 incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
-                
+                    
                 inputStr = incoming.message.encode()
-                
-                await stdin.write(inputStr)
-                
+                    
+                stdin.write(inputStr)
+                await stdin.drain()
+                    
                 await aio.sleep(1)
                 
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
@@ -101,10 +106,10 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> stdout running")
 
         # okay, it's running
+        stdout = self.proc.outPipe
+        
         while (self.boxes.outbox.stdout.isRunning):
             logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
-            
-            stdout = self.proc.outPipe
             
             if (stdout.at_eof()):
                 logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> EOF!")
