@@ -234,7 +234,7 @@ class Manager(SubprocessWrapper):
             logging.debug(f"{self.name} -> Manager:mailroom -> loop start")
             for child in self.children.union({self}):
                 _ch = cast(SubprocessWrapper, child)
-                if not(_ch.boxes.outbox.stdout.empty):
+                if not(_ch.boxes.outbox.stdout.empty()):
                     logging.debug(f"{self.name} -> Manager:mailroom -> message seen in an outbox!")
                     msg = await _ch.boxes.outbox.stdout.get()
                     # do we know where it goes?
