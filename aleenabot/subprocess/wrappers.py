@@ -101,16 +101,22 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> stdout running")
 
         # okay, it's running
-        async with aiof.open(self.proc.outPipe, mode="rb") as stdout:
-            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> pipe open")
-            while (self.boxes.outbox.stdout.isRunning):
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
-                    outgoing = await stdout.readline()
-                    outgoingStr = outgoing.decode("UTF-8")
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> trying to mail out -> {outgoingStr.strip()}")
-                    await self.message(message=outgoingStr)
-                    
-                    await aio.sleep(1)
+        while (self.boxes.outbox.stdout.isRunning):
+            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
+            
+            stdout = self.proc.outPipe
+            
+            if (stdout.at_eof()):
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> EOF!")
+                self.boxes.outbox.stdout.isRunning = False
+            else:
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> awaiting data")
+                outgoing = await stdout.readline()
+                outgoingStr = outgoing.decode("UTF-8")
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> trying to mail out -> {outgoingStr.strip()}")
+                await self.message(message=outgoingStr)
+            
+            await aio.sleep(1)
                     
         logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> end")
 
