@@ -12,7 +12,7 @@ async def aioMain():
     await main.addChild(proc)
     
     await main.start()
-    print ("yeah again, hoss")
+    await main.wait()
     
 if (__name__ == "__main__"):
     aio.run(aioMain())
