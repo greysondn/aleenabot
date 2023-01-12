@@ -207,26 +207,35 @@ class Manager(SubprocessWrapper):
             self.childBoxes[child.name] = child
 
     async def stdinHandler(self):
+        logging.debug(f"{self.name} -> Manager:stdinHandler -> start")
         # wait for this to officially start
         while (not (self.boxes.inbox.stdin.isRunning and self.processRunning)):
             await aio.sleep(1)
             
         # okay, it's running
         while (self.boxes.inbox.stdin.isRunning and self.processRunning):
+            logging.debug(f"{self.name} -> Manager:stdinHandler -> loop start")
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
             
+            logging.debug(f"{self.name} -> Manager:stdinHandler -> received message -> {incoming.message.strip()}")
             await self.parser.exec(incoming.message, incoming)
             
             await aio.sleep(1)
+        logging.debug(f"{self.name} -> Manager:stdinHandler -> end")
 
     async def mailroom(self):
+        logging.debug(f"{self.name} -> Manager:mailroom -> start")
         # aight, let's do this
         while (not self.processRunning):
+            logging.debug(f"{self.name} -> Manager:mailroom -> loud wait")
             await aio.sleep(1)
+        logging.debug(f"{self.name} -> Manager:mailroom -> process runnng")
         while (self.processRunning):
+            logging.debug(f"{self.name} -> Manager:mailroom -> loop start")
             for child in self.children.union({self}):
                 _ch = cast(SubprocessWrapper, child)
                 if not(_ch.boxes.outbox.stdout.empty):
+                    logging.debug(f"{self.name} -> Manager:mailroom -> message seen in an outbox!")
                     msg = await _ch.boxes.outbox.stdout.get()
                     # do we know where it goes?
                     if (msg.receiver in self.childBoxes.keys()):
@@ -234,7 +243,8 @@ class Manager(SubprocessWrapper):
                     else:
                         print("Discarded dead letter to " + msg.receiver)
                 
-                await aio.sleep(1)
+            await aio.sleep(1)
+        logging.debug(f"{self.name} -> Manager:mailroom -> end")
     
     async def start(self):
         self._addTaskToTg(aio.create_task(self.mailroom()))
@@ -243,8 +253,6 @@ class Manager(SubprocessWrapper):
         
         for child in self.children:
             await child.main()
-        
-        self.processRunning = False
     
     async def wait(self):
         logging.debug(f"{self.name} -> Manager:wait -> start")
