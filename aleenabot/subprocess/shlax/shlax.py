@@ -38,18 +38,15 @@ class ShlaxSubprocess:
         self.quiet:bool = quiet
         """Whether this process should print to terminal/etc"""
         
-        self.outPipeR,self.outPipeW =os.pipe()
-        self.outPipe = self.outPipeR
+        self.outPipe = None
         '''Direct handle on underlying process's std pipe.
         '''
         
-        self.errPipeR,self.errPipeW =os.pipe()
-        self.errPipe = self.errPipeR
+        self.errPipe = None
         '''Direct handle on underlying process's std pipe.
         '''
         
-        self.inPipeR,self.inPipeW =os.pipe()
-        self.inPipe = self.inPipeW
+        self.inPipe = None
         '''Direct handle on underlying process's std pipe.
         '''
         
@@ -74,10 +71,14 @@ class ShlaxSubprocess:
         
         self.process = await aio.create_subprocess_shell(
             shlex.join(self.cmd),
-            stdin=self.inPipeR,
-            stdout=self.outPipeW,
-            stderr=self.errPipeW
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
+        
+        self.inPipe  = self.process.stdin
+        self.outpipe = self.process.stdout
+        self.errPipe = self.process.stderr
         
         self.started = True
 
