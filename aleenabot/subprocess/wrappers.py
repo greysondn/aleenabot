@@ -1,10 +1,14 @@
 import asyncio as aio
+import aiofiles as aiof
 import shlex
+import logging
 
 from aleenabot.subprocess.helpers import InterProcessMail, InterProcessMailType
 from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
+
+logging.basicConfig(level=logging.DEBUG)
 
 class SubprocessWrapper:
     def __init__(self, cmd, name:str="Unknown", quiet:bool=False, tg:set = set()):
@@ -35,18 +39,22 @@ class SubprocessWrapper:
                         payload = payload
                     )
         # and then huck it into the outbox
-        # REMOVED: Loopback check call
+        await self.boxes.outbox.stdout.put(msg)
 
     def _addTaskToTg(self, task):
         self.tg.add(task)
         task.add_done_callback(self.tg.discard)
 
     async def main(self):
+        logging.debug(f"{self.name} -> SubprocessWrapper:main -> start")
+        
         # this is pretty epic, really, though
         self._addTaskToTg(aio.create_task(self.mainProcess()))
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        self._addTaskToTg(aio.create_task(self.stdoutHandler()))
         
         # I think that's it?
+        logging.debug(f"{self.name} -> SubprocessWrapper:main -> end")
 
     async def mainProcess(self):
         # tell everything we're running
@@ -56,19 +64,48 @@ class SubprocessWrapper:
         self.processRunning = True
     
     async def stdinHandler(self):
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> start")
+        
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
         while (not self.boxes.inbox.stdin.isRunning):
             await aio.sleep(1)
+
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> stdin running")
+        
+        # okay, it's running
+        async with aiof.open(self.proc.inPipe, mode="wb") as stdin:
+            logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> pipe open")
+            while (self.boxes.inbox.stdin.isRunning):
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> loop start")
+                incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+                
+                inputStr = incoming.message.encode()
+                
+                await stdin.write(inputStr)
+                
+                await aio.sleep(1)
+                
+        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
+
+    async def stdoutHandler(self):
+        # TODO: write docs about how this is meant to override.
+
+        # wait for this to officially start
+        while (not self.boxes.outbox.stdout.isRunning):
+            await aio.sleep(1)
             
         # okay, it's running
-        while (self.boxes.inbox.stdin.isRunning):
-            incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
-            
-            # self.proc.inPipe.addLine(incoming.message)
-            
-            await aio.sleep(1)
+        while (self.boxes.outbox.stdout.isRunning):
+            async with aiof.open(self.proc.outPipe, mode="rb") as stdout:
+                outgoing = await stdout.readline()
+                outgoingStr = outgoing.decode("UTF-8")
+                print("Yes!")
+                await self.message(message=outgoingStr)
+                
+                await aio.sleep(1)
+
 
 class CommandParser:
     def __init__(self):
