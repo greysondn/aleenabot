@@ -230,3 +230,7 @@ class Manager(SubprocessWrapper):
         
         for child in self.children:
             await child.main()
+    
+    async def wait(self):
+        while (len(self.tg) > 0):
+            await aio.sleep(1)
