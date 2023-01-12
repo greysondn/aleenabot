@@ -232,5 +232,10 @@ class Manager(SubprocessWrapper):
             await child.main()
     
     async def wait(self):
+        logging.debug(f"{self.name} -> Manager:wait -> start")
+        startLen = 0
         while (len(self.tg) > 0):
+            if (len(self.tg) != startLen):
+                startLen = len.self.tg
+                logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
             await aio.sleep(1)
