@@ -69,8 +69,6 @@ class ShlaxSubprocess:
         # Create the subprocess controlled by DateProtocol;
         # redirect the standard output into a pipe.
         
-        print(self.cmd)
-        
         self.process = await aio.create_subprocess_exec(
             self.cmd,
             *self.args,
