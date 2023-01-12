@@ -235,9 +235,14 @@ class Manager(SubprocessWrapper):
             for child in self.children.union({self}):
                 _ch = cast(SubprocessWrapper, child)
                 if not(_ch.boxes.outbox.stdout.empty()):
-                    logging.debug(f"{self.name} -> Manager:mailroom -> message seen in an outbox!")
                     msg = await _ch.boxes.outbox.stdout.get()
                     # do we know where it goes?
+                    logging.debug(f"{self.name} -> Manager:mailroom -> message seen in an outbox!" + "\n" +
+                                  f"    -> sender: {msg.sender}" + "\n" +
+                                  f"    -> receiver: {msg.receiver}" + "\n" +
+                                  f"    -> message: {msg.message}" + "\n" +
+                                  f"    -> objectend")
+                    
                     if (msg.receiver in self.childBoxes.keys()):
                         await self.childBoxes[msg.receiver].boxes.inbox.stdin.put(msg)
                     else:
@@ -250,6 +255,7 @@ class Manager(SubprocessWrapper):
         self._addTaskToTg(aio.create_task(self.mailroom()))
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
         self.processRunning = True
+        self.boxes.inbox.stdin.isRunning = True
         
         for child in self.children:
             await child.main()
