@@ -1,5 +1,8 @@
 import aleenabot.subprocess.wrappers as hlp
 import asyncio as aio
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
 
 async def aioMain():
     main = hlp.Manager()

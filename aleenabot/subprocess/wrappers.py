@@ -8,8 +8,6 @@ from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
-logging.basicConfig(level=logging.DEBUG)
-
 class SubprocessWrapper:
     def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
         self.name:str         = name
