@@ -213,11 +213,11 @@ class Manager(SubprocessWrapper):
 
     async def stdinHandler(self):
         # wait for this to officially start
-        while (not self.boxes.inbox.stdin.isRunning):
+        while (not (self.boxes.inbox.stdin.isRunning and self.processRunning)):
             await aio.sleep(1)
             
         # okay, it's running
-        while (self.boxes.inbox.stdin.isRunning):
+        while (self.boxes.inbox.stdin.isRunning and self.processRunning):
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
             
             await self.parser.exec(incoming.message, incoming)
@@ -248,6 +248,8 @@ class Manager(SubprocessWrapper):
         
         for child in self.children:
             await child.main()
+        
+        self.processRunning = False
     
     async def wait(self):
         logging.debug(f"{self.name} -> Manager:wait -> start")
