@@ -7,6 +7,7 @@ from aleenabot.database.migration import DBMigrationType as MGT
 import aleenabot.database.database as db
 # from itertools import permutations # maybe later
 import pandas as pd
+from   tqdm import tqdm
 
 def createDB():
     initMigrator()
@@ -94,9 +95,11 @@ def dbAddItemsFromCSV():
 
 # ------------------------------------------------------------------------------
 
-ingredientSets:list[dict[str, int]] = []
+ingredientSets  = []
 
 def _helper_ingredients(current:dict[str,int], remaining:list[str]):
+    global ingredientSets
+    
     l_remaining = remaining.copy()
     l_current   = current.copy()
     
@@ -128,11 +131,31 @@ def _helper_ingredients(current:dict[str,int], remaining:list[str]):
         # work's done.
         ingredientSets.append(current)
 
+def _helper_ingredient_commit(recipe):
+    global ingredientSets
+    
+    for s in ingredientSets:
+        # we begin to assemble ingredients, yes?
+        for ingredient in s.keys():
+            item  = db.MCItem.get(registryName=ingredient),
+            iOrIt, created = db.MCItemOrItemTag.get_or_create(
+                item = item,
+                tag  = None
+            )
+            d = {}
+            
+            rItem, created = db.MCRecipeInput.get_or_create(
+                recipe = recipe,
+                item   = iOrIt,
+                count  = s[ingredient],
+                char   = None
+            )
+    # reset ingredient sets
+    ingredientSets = []
+
 def dbAddShapelessRecipesFromCSV():
     csv = pd.read_csv(".\\__data\\vanilla\\items.csv")
-
-    mc_mod         = db.MCMod.get(name = "Minecraft")
-    mc_modVersion  = db.MCModVersion.get(mod = mc_mod, version = "1.16.5")
+    table          = db.MCItem.get(registryName="minecraft:crafting_table")
 
     for i in range(len(csv)):
         # get line
@@ -155,7 +178,7 @@ def dbAddShapelessRecipesFromCSV():
         if (line["Is Dynamic"] == "+"):
             l_isDynamic    = True
             
-        recipe, created = db.MCItem.get_or_create(
+        recipe, created = db.MCRecipe.get_or_create(
             registryName = line["id"],
             outputItem   = l_output_item,
             enabled      = True,
@@ -165,12 +188,13 @@ def dbAddShapelessRecipesFromCSV():
             icon         = line["Icon"],
             isShapeless  = True,
             inputPattern = None,
-            station      = db.MCItem.get(registryName="minecraft:crafting_table"),
+            station      = table,
             isDynamic    = l_isDynamic
         )
 
         # ingredients now
         _helper_ingredients({}, line["Input Ingredients"].split("\n"))
+        _helper_ingredient_commit(recipe)
         
 # ------------------------------------------------------------------------------
 # main
