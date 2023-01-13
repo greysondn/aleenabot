@@ -80,6 +80,8 @@ class SubprocessWrapper:
             if (stdin.is_closing()):
                 logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing!")
                 self.boxes.inbox.stdin.isRunning = False
+            # elif(not self.boxes.outbox.stdout.isRunning):
+            #     self.boxes.inbox.stdin.isRunning = False
             else:
                 incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
                     
@@ -87,7 +89,7 @@ class SubprocessWrapper:
                     
                 stdin.write(inputStr)
                 await stdin.drain()
-                    
+            
             await aio.sleep(1)
                 
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
