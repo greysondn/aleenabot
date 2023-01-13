@@ -142,6 +142,7 @@ class CommandParser:
         ret["_cmd"]         = _cmd
         ret["_help_txt"]    = help_txt
         ret["_args"]        = _args
+        return ret
     
     def defineGroupCommand(self, _children={}):
         ret = {}
