@@ -155,6 +155,7 @@ class CommandParser:
 
     # finally run
     async def exec(self, command:str, msg:InterProcessMail|None = None):
+        logging.debug(f"CommandParser:exec -> start")
         # we'll set it aside because we can
         swp = self.commands
         
@@ -185,6 +186,7 @@ class CommandParser:
             else:
                 end = True
                 await self.print("Error: Could not find command! : " + command)
+        logging.debug(f"CommandParser:exec -> end")
 
 class Manager(SubprocessWrapper):
     def __init__(self, tg:set = set()):
