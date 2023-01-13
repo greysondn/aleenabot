@@ -80,15 +80,20 @@ class SubprocessWrapper:
             if (stdin.is_closing()):
                 logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing!")
                 self.boxes.inbox.stdin.isRunning = False
-            # elif(not self.boxes.outbox.stdout.isRunning):
-            #     self.boxes.inbox.stdin.isRunning = False
+            elif (not self.boxes.outbox.stdout.isRunning):
+                self.boxes.inbox.stdin.isRunning = False
             else:
-                incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+                try:
+                    incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
                     
-                inputStr = incoming.message.encode()
+                    inputStr = incoming.message.encode()
                     
-                stdin.write(inputStr)
-                await stdin.drain()
+                    stdin.write(inputStr)
+                    
+                    await stdin.drain()
+                except aio.queues.QueueEmpty:
+                    # this is fine, for the record
+                    pass
             
             await aio.sleep(1)
                 
@@ -108,7 +113,7 @@ class SubprocessWrapper:
         # okay, it's running
         stdout = self.proc.outPipe
         
-        while (self.boxes.outbox.stdout.isRunning and not stdout.at_eof()):
+        while (self.boxes.outbox.stdout.isRunning):
             logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
             
             logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> awaiting data")
@@ -119,6 +124,9 @@ class SubprocessWrapper:
                 await self.message(message=outgoingStr)
             
             await aio.sleep(1)
+            
+            if (stdout.at_eof()):
+                self.boxes.outbox.stdout.isRunning = False
                     
         logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> end")
 
@@ -214,11 +222,11 @@ class Manager(SubprocessWrapper):
     async def stdinHandler(self):
         logging.debug(f"{self.name} -> Manager:stdinHandler -> start")
         # wait for this to officially start
-        while (not (self.boxes.inbox.stdin.isRunning and self.processRunning)):
+        while (not (self.processRunning)):
             await aio.sleep(1)
             
         # okay, it's running
-        while (self.boxes.inbox.stdin.isRunning and self.processRunning):
+        while (self.processRunning):
             logging.debug(f"{self.name} -> Manager:stdinHandler -> loop start")
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
             
@@ -272,8 +280,23 @@ class Manager(SubprocessWrapper):
             if (len(self.tg) != startLen):
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
-            if (len(self.tg) == 2):
+            if (len(self.tg) <= 2):
                 logging.debug(f"{self.name} -> Manager:wait -> only see self, shutting down")
+                
+                logging.info(f"Shutting down, will give threads a chance to close.")
                 self.processRunning = False
                 
+                for i in range(10):
+                    logging.info(f"Waiting...")
+                    await aio.sleep(1)
+                
+                if len(self.tg) > 0:
+                    logging.info(f"Took too long. Killing children.")
+                    for t in self.tg:
+                        if not t.done():
+                            t.cancel()
+                        else:
+                            self.tg.remove(t)
+                
             await aio.sleep(1)
+        print("Goodnight!")
