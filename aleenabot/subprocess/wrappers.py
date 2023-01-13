@@ -270,4 +270,8 @@ class Manager(SubprocessWrapper):
             if (len(self.tg) != startLen):
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
+            if (len(self.tg) == 2):
+                logging.debug(f"{self.name} -> Manager:wait -> only see self, shutting down")
+                self.processRunning = False
+                
             await aio.sleep(1)
