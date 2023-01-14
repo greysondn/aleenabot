@@ -273,11 +273,13 @@ class Manager(SubprocessWrapper):
         logging.debug(f"{self.name} -> Manager:cliHandler -> process runnng")
         while (self.processRunning):
             userInput = await aioc.ainput("> ")
-            
-            await self.message(
-                                receiver = "echo",
-                                message = userInput
-            )
+            if userInput.strip() == "main exit":
+                await self.terminate()
+            else:
+                await self.message(
+                                    receiver = "echo",
+                                    message = userInput
+                )
     
     async def start(self, cli=False):
         self._addTaskToTg(aio.create_task(self.mailroom()))
