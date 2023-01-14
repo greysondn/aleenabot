@@ -2,6 +2,8 @@
 
 def main():
     print("Hello, world!")
+    print("Hello, moon!")
+    print("Hello, stars!")
 
 if ("__main__" == __name__):
     main()
