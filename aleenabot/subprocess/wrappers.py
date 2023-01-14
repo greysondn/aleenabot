@@ -56,11 +56,11 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> SubprocessWrapper:main -> end")
 
     async def mainProcess(self):
-        # tell everything we're running
-        await self.boxes.startAll()
         # start program
         await self.proc.start()
         self.processRunning = True
+        # tell everything we're running
+        await self.boxes.startAll()
     
     async def stdinHandler(self):
         logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> start")
@@ -82,16 +82,23 @@ class SubprocessWrapper:
                 logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing!")
                 self.boxes.inbox.stdin.isRunning = False
             elif (not self.boxes.outbox.stdout.isRunning):
+                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing self with outbox")
                 self.boxes.inbox.stdin.isRunning = False
             else:
                 try:
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> try get mail")
                     incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> got mail!\n     --> {incoming.message}")
                     
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> encode")
                     inputStr = incoming.message.encode()
                     
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> pass to proc")
                     stdin.write(inputStr)
-                    
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> drain")
                     await stdin.drain()
+                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> done draining")
+                    
                 except aio.queues.QueueEmpty:
                     # this is fine, for the record
                     pass

@@ -8,7 +8,7 @@ async def aioMain():
     main = hlp.Manager()
     proc = hlp.SubprocessWrapper(
         'python',
-        "C:\\Users\\Dorian Greyson\\git\\aleenabot\\aleenabot\\scripts\\echo.py",
+        '"C:\\Users\\Dorian Greyson\\git\\aleenabot\\aleenabot\\scripts\\echo.py"',
         name = "echo",
         tg = main.tg
     )
