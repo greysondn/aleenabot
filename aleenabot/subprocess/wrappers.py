@@ -9,6 +9,8 @@ from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
+STANDARD_YIELD_LENGTH:float = 2.0
+
 class SubprocessWrapper:
     def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
         self.name:str         = name
@@ -17,6 +19,7 @@ class SubprocessWrapper:
         self.boxes            = self.proc.boxes
         self.processRunning   = False
         self.processPoisoned  = False
+        self.exitcode         = None
 
     # REMOVED: Loopback check function
 
@@ -45,15 +48,12 @@ class SubprocessWrapper:
         task.add_done_callback(self.tg.discard)
 
     async def main(self):
-        logging.debug(f"{self.name} -> SubprocessWrapper:main -> start")
-        
         # this is pretty epic, really, though
         self._addTaskToTg(aio.create_task(self.mainProcess()))
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
         self._addTaskToTg(aio.create_task(self.stdoutHandler()))
         
         # I think that's it?
-        logging.debug(f"{self.name} -> SubprocessWrapper:main -> end")
 
     async def mainProcess(self):
         # start program
@@ -61,83 +61,66 @@ class SubprocessWrapper:
         self.processRunning = True
         # tell everything we're running
         await self.boxes.startAll()
+        
+        # wait on program to exit
+        self.exitcode = await self.proc.process.wait()
+        
+        # mark everything as exited when the program exits
+        self.processRunning = False
     
     async def stdinHandler(self):
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> start")
-        
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
-        while (not self.boxes.inbox.stdin.isRunning or (self.proc.inPipe == None)):
-            await aio.sleep(1)
-
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> stdin running")
+        while (not self.processRunning):
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         
         # okay, it's running
         stdin = self.proc.inPipe
         
-        while (self.boxes.inbox.stdin.isRunning):
-            logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> loop start")
-            if (stdin.is_closing()):
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing!")
-                self.boxes.inbox.stdin.isRunning = False
-            elif (not self.boxes.outbox.stdout.isRunning):
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> closing self with outbox")
-                self.boxes.inbox.stdin.isRunning = False
+        while (self.processRunning):
+            if False:
+                # just temporary to avoid a change the world edit alongside the
+                # current edit, sorry!
+                pass
             else:
                 try:
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> try get mail")
                     incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> got mail!\n     --> {incoming.message}")
-                    
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> encode")
                     inputStr = incoming.message.encode()
-                    
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> pass to proc")
                     stdin.write(inputStr)
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> drain")
                     await stdin.drain()
-                    logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> done draining")
                     
                 except aio.queues.QueueEmpty:
                     # this is fine, for the record
                     pass
             
-            await aio.sleep(1)
-                
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdinHandler -> end")
+            await aio.sleep(STANDARD_YIELD_LENGTH)
+
+    async def _stdoutHandler_doOutput(self):
+        stdout = self.proc.outPipe
+        outgoing = await stdout.readline()
+        if (len(outgoing) > 0):
+            outgoingStr = "print " + outgoing.decode("UTF-8")
+            await self.message(message=outgoingStr)
 
     async def stdoutHandler(self):
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> start")
-        
         # TODO: write docs about how this is meant to override.
 
         # wait for this to officially start
-        while (not self.boxes.outbox.stdout.isRunning or (self.proc.outPipe == None)):
-            await aio.sleep(1)
-            
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> stdout running")
-
+        while (not self.processRunning):
+            await aio.sleep(STANDARD_YIELD_LENGTH)
+        
         # okay, it's running
         stdout = self.proc.outPipe
         
-        while (self.boxes.outbox.stdout.isRunning):
-            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> loop start")
-            
-            logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> awaiting data")
-            outgoing = await stdout.readline()
-            if (len(outgoing) > 0):
-                outgoingStr = "print " + outgoing.decode("UTF-8")
-                logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> trying to mail out -> {outgoingStr.strip()}")
-                await self.message(message=outgoingStr)
-            
-            await aio.sleep(1)
-            
-            if (stdout.at_eof()):
-                self.boxes.outbox.stdout.isRunning = False
-                    
-        logging.debug(f"{self.name} -> SubprocessWrapper:stdoutHandler -> end")
+        while (self.processRunning):
+            await self._stdoutHandler_doOutput()
+            await aio.sleep(STANDARD_YIELD_LENGTH)
 
+        # empty the accursed thing at the end
+        while (not stdout.at_eof()):
+            await self._stdoutHandler_doOutput()
+    
 class CommandParser:
     def __init__(self):
         self.commands = self.defineGroupCommand()
@@ -174,7 +157,6 @@ class CommandParser:
 
     # finally run
     async def exec(self, command:str, msg:InterProcessMail|None = None):
-        logging.debug(f"CommandParser:exec -> start")
         # we'll set it aside because we can
         swp = self.commands
         
@@ -205,7 +187,6 @@ class CommandParser:
             else:
                 end = True
                 await self.print("Error: Could not find command! : " + command)
-        logging.debug(f"CommandParser:exec -> end")
 
 class Manager(SubprocessWrapper):
     def __init__(self, tg:set = set()):
@@ -229,31 +210,21 @@ class Manager(SubprocessWrapper):
             self.childBoxes[child.name] = child
 
     async def stdinHandler(self):
-        logging.debug(f"{self.name} -> Manager:stdinHandler -> start")
         # wait for this to officially start
         while (not (self.processRunning)):
-            await aio.sleep(1)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
             
         # okay, it's running
         while (self.processRunning):
-            logging.debug(f"{self.name} -> Manager:stdinHandler -> loop start")
             incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
-            
-            logging.debug(f"{self.name} -> Manager:stdinHandler -> received message -> {incoming.message.strip()}")
             await self.parser.exec(incoming.message, incoming)
-            
-            await aio.sleep(1)
-        logging.debug(f"{self.name} -> Manager:stdinHandler -> end")
+            await aio.sleep(STANDARD_YIELD_LENGTH)
 
     async def mailroom(self):
-        logging.debug(f"{self.name} -> Manager:mailroom -> start")
         # aight, let's do this
         while (not self.processRunning):
-            logging.debug(f"{self.name} -> Manager:mailroom -> loud wait")
-            await aio.sleep(1)
-        logging.debug(f"{self.name} -> Manager:mailroom -> process runnng")
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         while (self.processRunning):
-            logging.debug(f"{self.name} -> Manager:mailroom -> loop start")
             for child in self.children.union({self}):
                 _ch = cast(SubprocessWrapper, child)
                 if not(_ch.boxes.outbox.stdout.empty()):
@@ -270,14 +241,11 @@ class Manager(SubprocessWrapper):
                     else:
                         print("Discarded dead letter to " + msg.receiver)
                 
-            await aio.sleep(1)
-        logging.debug(f"{self.name} -> Manager:mailroom -> end")
+            await aio.sleep(STANDARD_YIELD_LENGTH)
     
     async def cliHandler(self):
         while (not self.processRunning):
-            logging.debug(f"{self.name} -> Manager:cliHandler -> loud wait")
-            await aio.sleep(1)
-        logging.debug(f"{self.name} -> Manager:cliHandler -> process runnng")
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         while (self.processRunning):
             userInput = await aioc.ainput("> ")
             if userInput.strip() == "main exit":
@@ -300,7 +268,6 @@ class Manager(SubprocessWrapper):
             self.managerTaskCount = self.managerTaskCount + 1
         
         self.processRunning = True
-        self.boxes.inbox.stdin.isRunning = True
         
         for child in self.children:
             await child.main()
@@ -311,7 +278,7 @@ class Manager(SubprocessWrapper):
         
         for i in range(10):
             logging.info(f"Waiting...")
-            await aio.sleep(1)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         
         if len(self.tg) > 0:
             logging.info(f"Took too long. Killing children.")
@@ -321,16 +288,19 @@ class Manager(SubprocessWrapper):
                 else:
                     self.tg.remove(t)
     
-    async def wait(self):
-        logging.debug(f"{self.name} -> Manager:wait -> start")
+    async def wait(self, cli=False):
+        if (not self.processRunning):
+            await self.start(cli)
         startLen = 0
         while (len(self.tg) > 0):
             if (len(self.tg) != startLen):
+                for task in self.tg:
+                    logging.debug(f"{self.name} -> Manager:wait -> outstanding task: {task._coro}")
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
             if (len(self.tg) <= self.managerTaskCount):
                 logging.debug(f"{self.name} -> Manager:wait -> only see self, shutting down")
                 await self.terminate()
                 
-            await aio.sleep(1)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         print("Goodnight!")
