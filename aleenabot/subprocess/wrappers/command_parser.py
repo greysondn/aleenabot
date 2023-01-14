@@ -1,8 +1,6 @@
 from aleenabot.subprocess.helpers import InterProcessMail
 import shlex
 
-STANDARD_YIELD_LENGTH:float = 0.2
-
 class CommandParser:
     def __init__(self):
         self.commands = self.defineGroupCommand()

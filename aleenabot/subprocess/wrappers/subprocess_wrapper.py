@@ -1,11 +1,12 @@
 from aleenabot.subprocess.helpers import InterProcessMail, InterProcessMailType
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
+from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
 from typing import Any
 
 import asyncio as aio
 import logging
 
-STANDARD_YIELD_LENGTH:float = 0.2
+
 
 class SubprocessWrapper:
     def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):

@@ -6,3 +6,6 @@ from aleenabot.subprocess.wrappers.subprocess_wrapper import SubprocessWrapper a
 Manager             = manager
 CommandParser       = commandparser
 SubprocessWrapper   = subprocesswrapper
+
+# centralize this
+STANDARD_YIELD_LENGTH:float = 0.2

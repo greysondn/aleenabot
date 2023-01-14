@@ -1,5 +1,6 @@
 from aleenabot.subprocess.buffers import IOBufferSet
 from aleenabot.subprocess.helpers import InterProcessMail
+from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
 from aleenabot.subprocess.wrappers.subprocess_wrapper import SubprocessWrapper
 from aleenabot.subprocess.wrappers.command_parser import CommandParser
 from typing import cast
@@ -8,7 +9,6 @@ import aioconsole as aioc
 import asyncio as aio
 import logging
 
-STANDARD_YIELD_LENGTH:float = 0.2
 
 class Manager(SubprocessWrapper):
     def __init__(self, tg:set = set()):
