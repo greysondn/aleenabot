@@ -9,7 +9,7 @@ from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
-STANDARD_YIELD_LENGTH:float = 0.1
+STANDARD_YIELD_LENGTH:float = 0.2
 
 class SubprocessWrapper:
     def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
@@ -59,8 +59,6 @@ class SubprocessWrapper:
         # start program
         await self.proc.start()
         self.processRunning = True
-        # tell everything we're running
-        await self.boxes.startAll()
         
         # wait on program to exit
         self.exitcode = await self.proc.process.wait()
@@ -89,17 +87,20 @@ class SubprocessWrapper:
                 # this is fine, for the record
                 pass
             
-            await aio.sleep(STANDARD_YIELD_LENGTH)
+            await aio.sleep(STANDARD_YIELD_LENGTH * 5)
 
     async def _stdoutHandler_doOutput(self):
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> start")
         stdout = self.proc.outPipe
+        logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> read")
         outgoing = await stdout.read()
         if (len(outgoing) > 0):
+            logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> had data")
             decoded = outgoing.decode("UTF-8")
             
             for ln in decoded.split("\n"):
                 outgoingStr = "print " + ln
+                logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> send msg")
                 await self.message(message=outgoingStr)
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> end")
 
@@ -257,10 +258,7 @@ class Manager(SubprocessWrapper):
             if userInput.strip() == "main exit":
                 await self.terminate()
             else:
-                await self.message(
-                                    receiver = "echo",
-                                    message = userInput
-                )
+                pass
     
     async def start(self, cli=False):
         self._addTaskToTg(aio.create_task(self.mailroom()))
