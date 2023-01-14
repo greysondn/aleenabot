@@ -1,5 +1,6 @@
 import asyncio as aio
 import aiofiles as aiof
+import aioconsole as aioc
 import shlex
 import logging
 
@@ -209,6 +210,7 @@ class Manager(SubprocessWrapper):
         self.childBoxes = dict()
         self.processRunning   = False
         self.processPoisoned  = False
+        self.managerTaskCount = 0
         
         # self.addChild(self)
         # self.children.add(self)
@@ -264,14 +266,51 @@ class Manager(SubprocessWrapper):
             await aio.sleep(1)
         logging.debug(f"{self.name} -> Manager:mailroom -> end")
     
-    async def start(self):
+    async def cliHandler(self):
+        while (not self.processRunning):
+            logging.debug(f"{self.name} -> Manager:cliHandler -> loud wait")
+            await aio.sleep(1)
+        logging.debug(f"{self.name} -> Manager:cliHandler -> process runnng")
+        while (self.processRunning):
+            userInput = await aioc.ainput("> ")
+            
+            await self.message(
+                                receiver = "echo",
+                                message = userInput
+            )
+    
+    async def start(self, cli=False):
         self._addTaskToTg(aio.create_task(self.mailroom()))
+        self.managerTaskCount = self.managerTaskCount + 1
+        
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        self.managerTaskCount = self.managerTaskCount + 1
+        
+        if (cli):
+            self._addTaskToTg(aio.create_task(self.cliHandler()))
+            self.managerTaskCount = self.managerTaskCount + 1
+        
         self.processRunning = True
         self.boxes.inbox.stdin.isRunning = True
         
         for child in self.children:
             await child.main()
+    
+    async def terminate(self):
+        logging.info(f"Shutting down, will give threads a chance to close.")
+        self.processRunning = False
+        
+        for i in range(10):
+            logging.info(f"Waiting...")
+            await aio.sleep(1)
+        
+        if len(self.tg) > 0:
+            logging.info(f"Took too long. Killing children.")
+            for t in self.tg:
+                if not t.done():
+                    t.cancel()
+                else:
+                    self.tg.remove(t)
     
     async def wait(self):
         logging.debug(f"{self.name} -> Manager:wait -> start")
@@ -280,23 +319,9 @@ class Manager(SubprocessWrapper):
             if (len(self.tg) != startLen):
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
-            if (len(self.tg) <= 2):
+            if (len(self.tg) <= self.managerTaskCount):
                 logging.debug(f"{self.name} -> Manager:wait -> only see self, shutting down")
-                
-                logging.info(f"Shutting down, will give threads a chance to close.")
-                self.processRunning = False
-                
-                for i in range(10):
-                    logging.info(f"Waiting...")
-                    await aio.sleep(1)
-                
-                if len(self.tg) > 0:
-                    logging.info(f"Took too long. Killing children.")
-                    for t in self.tg:
-                        if not t.done():
-                            t.cancel()
-                        else:
-                            self.tg.remove(t)
+                await self.terminate()
                 
             await aio.sleep(1)
         print("Goodnight!")
