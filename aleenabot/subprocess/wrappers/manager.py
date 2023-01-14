@@ -65,26 +65,12 @@ class Manager(SubprocessWrapper):
                 
             await aio.sleep(STANDARD_YIELD_LENGTH)
     
-    async def cliHandler(self):
-        while (not self.processRunning):
-            await aio.sleep(STANDARD_YIELD_LENGTH)
-        while (self.processRunning):
-            userInput = await aioc.ainput("> ")
-            if userInput.strip() == "main exit":
-                await self.terminate()
-            else:
-                pass
-    
-    async def start(self, cli=False):
+    async def start(self):
         self._addTaskToTg(aio.create_task(self.mailroom()))
         self.managerTaskCount = self.managerTaskCount + 1
         
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
         self.managerTaskCount = self.managerTaskCount + 1
-        
-        if (cli):
-            self._addTaskToTg(aio.create_task(self.cliHandler()))
-            self.managerTaskCount = self.managerTaskCount + 1
         
         self.processRunning = True
         
@@ -107,7 +93,7 @@ class Manager(SubprocessWrapper):
     
     async def wait(self, cli=False):
         if (not self.processRunning):
-            await self.start(cli)
+            await self.start()
         startLen = 0
         while (len(self.tg) > 0):
             if (len(self.tg) != startLen):
