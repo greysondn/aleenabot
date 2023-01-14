@@ -79,20 +79,15 @@ class SubprocessWrapper:
         stdin = self.proc.inPipe
         
         while (self.processRunning):
-            if False:
-                # just temporary to avoid a change the world edit alongside the
-                # current edit, sorry!
+            try:
+                incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
+                inputStr = incoming.message.encode()
+                stdin.write(inputStr)
+                await stdin.drain()
+                
+            except aio.queues.QueueEmpty:
+                # this is fine, for the record
                 pass
-            else:
-                try:
-                    incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
-                    inputStr = incoming.message.encode()
-                    stdin.write(inputStr)
-                    await stdin.drain()
-                    
-                except aio.queues.QueueEmpty:
-                    # this is fine, for the record
-                    pass
             
             await aio.sleep(STANDARD_YIELD_LENGTH)
 
