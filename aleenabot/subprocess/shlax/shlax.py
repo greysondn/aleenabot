@@ -3,7 +3,7 @@ import functools
 import re
 import shlex
 import sys
-import aleenabot.subprocess.buffer as aspBuffer
+import aleenabot.subprocess.buffers as aspBuffer
 import aleenabot.subprocess.helpers as aHelpers
 import io
 import os
