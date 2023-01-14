@@ -9,7 +9,7 @@ from aleenabot.subprocess.buffer import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
-STANDARD_YIELD_LENGTH:float = 2.0
+STANDARD_YIELD_LENGTH:float = 0.1
 
 class SubprocessWrapper:
     def __init__(self, cmd, *args, name:str="Unknown", quiet:bool=False, tg:set = set()):
@@ -73,7 +73,7 @@ class SubprocessWrapper:
 
         # wait for this to officially start
         while (not self.processRunning):
-            await aio.sleep(STANDARD_YIELD_LENGTH)
+            await aio.sleep(0.1)
         
         # okay, it's running
         stdin = self.proc.inPipe
@@ -92,30 +92,41 @@ class SubprocessWrapper:
             await aio.sleep(STANDARD_YIELD_LENGTH)
 
     async def _stdoutHandler_doOutput(self):
+        logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> start")
         stdout = self.proc.outPipe
-        outgoing = await stdout.readline()
+        outgoing = await stdout.read()
         if (len(outgoing) > 0):
-            outgoingStr = "print " + outgoing.decode("UTF-8")
-            await self.message(message=outgoingStr)
+            decoded = outgoing.decode("UTF-8")
+            
+            for ln in decoded.split("\n"):
+                outgoingStr = "print " + ln
+                await self.message(message=outgoingStr)
+        logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> end")
 
     async def stdoutHandler(self):
         # TODO: write docs about how this is meant to override.
-
+        logging.debug(f"{self.name} -> _stdoutHandler -> start")
         # wait for this to officially start
         while (not self.processRunning):
-            await aio.sleep(STANDARD_YIELD_LENGTH)
+            await aio.sleep(0.1)
         
+        logging.debug(f"{self.name} -> _stdoutHandler -> process running")
         # okay, it's running
         stdout = self.proc.outPipe
         
         while (self.processRunning):
+            logging.debug(f"{self.name} -> _stdoutHandler -> loop start")
             await self._stdoutHandler_doOutput()
             await aio.sleep(STANDARD_YIELD_LENGTH)
 
+        logging.debug(f"{self.name} -> _stdoutHandler -> process dead")
         # empty the accursed thing at the end
         while (not stdout.at_eof()):
+            logging.debug(f"{self.name} -> _stdoutHandler -> await EOF")
             await self._stdoutHandler_doOutput()
-    
+            
+        logging.debug(f"{self.name} -> _stdoutHandler -> end")
+        
 class CommandParser:
     def __init__(self):
         self.commands = self.defineGroupCommand()
@@ -268,15 +279,13 @@ class Manager(SubprocessWrapper):
             await child.main()
     
     async def terminate(self):
-        logging.info(f"Shutting down, will give threads a chance to close.")
         self.processRunning = False
         
-        for i in range(10):
-            logging.info(f"Waiting...")
-            await aio.sleep(STANDARD_YIELD_LENGTH)
+        print("[*] Waiting ten seconds for soft termination.")
+        await aio.sleep(10)
         
         if len(self.tg) > 0:
-            logging.info(f"Took too long. Killing children.")
+            logging.info(f"[*] Now forcefully closing remaining tasks.")
             for t in self.tg:
                 if not t.done():
                     t.cancel()
@@ -290,11 +299,16 @@ class Manager(SubprocessWrapper):
         while (len(self.tg) > 0):
             if (len(self.tg) != startLen):
                 for task in self.tg:
-                    logging.debug(f"{self.name} -> Manager:wait -> outstanding task: {task._coro}")
+                    pass
+                    # logging.debug(f"{self.name} -> Manager:wait -> outstanding task: {task._coro}")
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
             if (len(self.tg) <= self.managerTaskCount):
                 logging.debug(f"{self.name} -> Manager:wait -> only see self, shutting down")
+                print("[*] Only the manager.")
+                print("[*] Waiting 30 seconds for messages to finish.")
+                await aio.sleep(30)
+                print("[*] Messages now discarded, terminating.")
                 await self.terminate()
                 
             await aio.sleep(STANDARD_YIELD_LENGTH)
