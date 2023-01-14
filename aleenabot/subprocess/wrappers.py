@@ -5,7 +5,7 @@ import shlex
 import logging
 
 from aleenabot.subprocess.helpers import InterProcessMail, InterProcessMailType
-from aleenabot.subprocess.buffer import IOBufferSet
+from aleenabot.subprocess.buffers import IOBufferSet
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 from typing import Any, Awaitable, cast, Optional
 
