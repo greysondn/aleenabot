@@ -219,7 +219,7 @@ class Manager(SubprocessWrapper):
             self.children.add(child)
             self.childBoxes[child.name] = child
 
-    async def stdinHandler(self):
+    async def stdinMailHandler(self):
         logging.debug(f"{self.name} -> Manager:stdinHandler -> start")
         # wait for this to officially start
         while (not (self.processRunning)):
@@ -266,7 +266,7 @@ class Manager(SubprocessWrapper):
     
     async def start(self):
         self._addTaskToTg(aio.create_task(self.mailroom()))
-        self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        self._addTaskToTg(aio.create_task(self.stdinMailHandler()))
         self.processRunning = True
         self.boxes.inbox.stdin.isRunning = True
         
