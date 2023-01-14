@@ -57,7 +57,7 @@ class InterProcessMail:
                 ret = obj
             else:
                 # equal, let's try index
-                if (self.index < obj.index):
+                if (self.index > obj.index):
                     ret = self
                 else:
                     # doesn't matter, won't be able to sort it any
