@@ -1,6 +1,7 @@
 from aleenabot.subprocess.buffers import IOBufferSet
 from aleenabot.subprocess.helpers import InterProcessMail
-from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
+# from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
+STANDARD_YIELD_LENGTH = 0.2
 from aleenabot.subprocess.wrappers.subprocess_wrapper import SubprocessWrapper
 from aleenabot.subprocess.wrappers.command_parser import CommandParser
 from typing import cast

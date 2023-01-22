@@ -1,6 +1,7 @@
 from aleenabot.subprocess.helpers import InterProcessMail, InterProcessMailType
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
-from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
+# from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
+STANDARD_YIELD_LENGTH = 0.2
 from typing import Any
 
 import asyncio as aio
