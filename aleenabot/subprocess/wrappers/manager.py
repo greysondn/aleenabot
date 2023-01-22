@@ -27,6 +27,24 @@ class Manager(SubprocessWrapper):
         # self.children.add(self)
         self.childBoxes[self.name] = self
     
+    async def cliHandler(self):
+        logging.debug(f"{self.name} -> cliHandler -> start")
+        
+        # wait for this to officially start
+        while (not (self.processRunning)):
+            await aio.sleep(STANDARD_YIELD_LENGTH)
+        
+        logging.debug(f"{self.name} -> cliHandler -> process started")
+        
+        while (self.processRunning):
+            uinput = await aioc.ainput()
+            logging.debug(f"{self.name} -> cliHandler -> input ack: || {uinput} ||")
+            
+            await self.message(receiver="cmd", message=uinput + "\n")
+            logging.debug(f"{self.name} -> cliHandler -> message sent!")
+        
+        logging.debug(f"{self.name} -> cliHandler -> end")
+    
     async def addChild(self, child:SubprocessWrapper):
         if (child not in self.children):
             self.children.add(child)
@@ -71,6 +89,9 @@ class Manager(SubprocessWrapper):
         self.managerTaskCount = self.managerTaskCount + 1
         
         self._addTaskToTg(aio.create_task(self.stdinHandler()))
+        self.managerTaskCount = self.managerTaskCount + 1
+        
+        self._addTaskToTg(aio.create_task(self.cliHandler()))
         self.managerTaskCount = self.managerTaskCount + 1
         
         self.processRunning = True

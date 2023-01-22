@@ -67,7 +67,7 @@ class SubprocessWrapper:
     async def stdinHandler(self):
         # TODO: write docs about how this is meant to override.
         logging.debug(f"{self.name} -> _stdinHandler -> start")
-        
+
         # wait for this to officially start
         while (not self.processRunning):
             await aio.sleep(0.1)
@@ -78,9 +78,9 @@ class SubprocessWrapper:
         stdin = self.proc.inPipe
         
         while (self.processRunning):
-            logging.debug(f"{self.name} -> _stdinHandler -> mail check")
+            # logging.debug(f"{self.name} -> _stdinHandler -> mail check")
             try:
-                incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
+                incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
                 logging.debug(f"{self.name} -> _stdinHandler -> had mail")
                 inputStr = incoming.message.encode()
                 logging.debug(f"{self.name} -> _stdinHandler -> encoded")
@@ -91,8 +91,8 @@ class SubprocessWrapper:
                 
             except aio.queues.QueueEmpty:
                 # this is fine, for the record
-                # pass
-                logging.debug(f"{self.name} -> _stdinHandler -> no mail")
+                pass
+                # logging.debug(f"{self.name} -> _stdinHandler -> no mail")
             
             await aio.sleep(STANDARD_YIELD_LENGTH * 5)
         logging.debug(f"{self.name} -> _stdinHandler -> end")
@@ -101,15 +101,17 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> start")
         stdout = self.proc.outPipe
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> read")
-        outgoing = await stdout.read()
+        outgoing = await stdout.read(512)
         if (len(outgoing) > 0):
-            logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> had data")
+            
             decoded = outgoing.decode("UTF-8")
             
             for ln in decoded.split("\n"):
                 outgoingStr = "print " + ln
                 logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> send msg")
                 await self.message(message=outgoingStr)
+        else:
+            logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> no data")
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> end")
 
     async def stdoutHandler(self):
