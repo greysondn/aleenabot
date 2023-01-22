@@ -66,26 +66,36 @@ class SubprocessWrapper:
     
     async def stdinHandler(self):
         # TODO: write docs about how this is meant to override.
-
+        logging.debug(f"{self.name} -> _stdinHandler -> start")
+        
         # wait for this to officially start
         while (not self.processRunning):
             await aio.sleep(0.1)
+        
+        logging.debug(f"{self.name} -> _stdinHandler -> process running")
         
         # okay, it's running
         stdin = self.proc.inPipe
         
         while (self.processRunning):
+            logging.debug(f"{self.name} -> _stdinHandler -> mail check")
             try:
                 incoming:InterProcessMail = self.boxes.inbox.stdin.get_nowait()
+                logging.debug(f"{self.name} -> _stdinHandler -> had mail")
                 inputStr = incoming.message.encode()
+                logging.debug(f"{self.name} -> _stdinHandler -> encoded")
                 stdin.write(inputStr)
+                logging.debug(f"{self.name} -> _stdinHandler -> written")
                 await stdin.drain()
+                logging.debug(f"{self.name} -> _stdinHandler -> drained")
                 
             except aio.queues.QueueEmpty:
                 # this is fine, for the record
-                pass
+                # pass
+                logging.debug(f"{self.name} -> _stdinHandler -> no mail")
             
             await aio.sleep(STANDARD_YIELD_LENGTH * 5)
+        logging.debug(f"{self.name} -> _stdinHandler -> end")
 
     async def _stdoutHandler_doOutput(self):
         logging.debug(f"{self.name} -> _stdoutHandler_doOutput -> start")
