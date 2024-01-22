@@ -1,7 +1,7 @@
 from aleenabot.subprocess.helpers import InterProcessMail, InterProcessMailType
 from aleenabot.subprocess.shlax.shlax import ShlaxSubprocess
 # from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
-STANDARD_YIELD_LENGTH = 0.2
+STANDARD_YIELD_LENGTH = 0.5
 from typing import Any
 
 import asyncio as aio
@@ -57,6 +57,7 @@ class SubprocessWrapper:
         # start program
         await self.proc.start()
         self.processRunning = True
+        await aio.sleep(STANDARD_YIELD_LENGTH) # give everything a chance to catch up with it running
         
         # wait on program to exit
         self.exitcode = await self.proc.process.wait()
@@ -70,7 +71,7 @@ class SubprocessWrapper:
 
         # wait for this to officially start
         while (not self.processRunning):
-            await aio.sleep(0.1)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         
         logging.debug(f"{self.name} -> _stdinHandler -> process running")
         
@@ -78,23 +79,25 @@ class SubprocessWrapper:
         stdin = self.proc.inPipe
         
         while (self.processRunning):
-            # logging.debug(f"{self.name} -> _stdinHandler -> mail check")
-            try:
-                incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+            logging.debug(f"{self.name} -> _stdinHandler -> mail check")
+            
+            if (not self.boxes.inbox.stdin.empty()):
                 logging.debug(f"{self.name} -> _stdinHandler -> had mail")
+                incoming:InterProcessMail = await self.boxes.inbox.stdin.get()
+                logging.debug(f"{self.name} -> _stdinHandler -> got mail")
                 inputStr = incoming.message.encode()
                 logging.debug(f"{self.name} -> _stdinHandler -> encoded")
                 stdin.write(inputStr)
                 logging.debug(f"{self.name} -> _stdinHandler -> written")
                 await stdin.drain()
                 logging.debug(f"{self.name} -> _stdinHandler -> drained")
-                
-            except aio.queues.QueueEmpty:
+            else:
                 # this is fine, for the record
-                pass
-                # logging.debug(f"{self.name} -> _stdinHandler -> no mail")
+                # pass
+                logging.debug(f"{self.name} -> _stdinHandler -> no mail")
             
-            await aio.sleep(STANDARD_YIELD_LENGTH * 5)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
+            
         logging.debug(f"{self.name} -> _stdinHandler -> end")
 
     async def _stdoutHandler_doOutput(self):
@@ -119,7 +122,7 @@ class SubprocessWrapper:
         logging.debug(f"{self.name} -> _stdoutHandler -> start")
         # wait for this to officially start
         while (not self.processRunning):
-            await aio.sleep(0.1)
+            await aio.sleep(STANDARD_YIELD_LENGTH)
         
         logging.debug(f"{self.name} -> _stdoutHandler -> process running")
         # okay, it's running

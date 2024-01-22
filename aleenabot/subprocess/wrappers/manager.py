@@ -1,7 +1,7 @@
 from aleenabot.subprocess.buffers import IOBufferSet
 from aleenabot.subprocess.helpers import InterProcessMail
 # from aleenabot.subprocess.wrappers import STANDARD_YIELD_LENGTH
-STANDARD_YIELD_LENGTH = 0.2
+STANDARD_YIELD_LENGTH = 0.5
 from aleenabot.subprocess.wrappers.subprocess_wrapper import SubprocessWrapper
 from aleenabot.subprocess.wrappers.command_parser import CommandParser
 from typing import cast
@@ -120,8 +120,8 @@ class Manager(SubprocessWrapper):
         while (len(self.tg) > 0):
             if (len(self.tg) != startLen):
                 for task in self.tg:
-                    pass
-                    # logging.debug(f"{self.name} -> Manager:wait -> outstanding task: {task._coro}")
+                    # pass
+                    logging.debug(f"{self.name} -> Manager:wait -> outstanding task: {task._coro}")
                 startLen = len(self.tg)
                 logging.debug(f"{self.name} -> Manager:wait -> outstanding tasks: {startLen}")
             if (len(self.tg) <= self.managerTaskCount):
