@@ -957,5 +957,8 @@ async def help(ctx):
     await ctx.send(msg)
 '''
 
-# Run the bot
-bot.run(DISCORD_TOKEN)
+def main():
+    global DISCORD_TOKEN
+    
+    # Run the bot
+    bot.run(DISCORD_TOKEN)
