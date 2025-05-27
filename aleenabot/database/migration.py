@@ -10,6 +10,8 @@ from peewee import ForeignKeyField
 class DBMigrationType(Enum):
     CORE      = "core"
     """value: 'core'"""
+    DISCORD   = "discord"
+    """Value: 'discord'"""
     MINECRAFT = "minecraft"
     """value 'minecraft'"""
 
@@ -149,7 +151,10 @@ def core_0000_to_0001():
         _db.create_tables(
             [
                 db.Dbmeta,
-                db.User
+                db.User,
+                db.Permission,
+                db.Permissions,
+
             ]
         )
     
@@ -169,32 +174,40 @@ dbMigrationManager.add(
     )
 )
 
+def discord_0000_to_0001():
+    with _db:
+        _db.create_tables(
+            [
+                db.DiscordUser
+            ]
+        )
+
+def discord_0001_to_0000():
+    print("Just delete the bloody thing! YEESH!")
+    
+dbMigrationManager.add(
+    DBMigration(
+        "0000",
+        "0001",
+        discord_0000_to_0001,
+        discord_0001_to_0000,
+        DBMigrationType.DISCORD
+    )
+)
+
 def mc_0000_to_0001():
     with _db:
         _db.create_tables(
             [
-                db.MCMinecraftUser,
-                db.MCMod,
-                db.MCModLoader,
-                db.MCMinecraftVersion,
-                db.MCModVersion,
-                db.MCItemTag,
-                db.MCEffectType,
-                db.MCEffect,
-                db.MCRarity,
-                db.MCItemArchetype,
-                db.MCEnchantment,
-                db.MCItem,
-                db.MCItemOrItemTag,
-                db.MCItems_to_MCEffects,
-                db.MCItemRepairMaterials,
-                db.MCItems_to_MCTags,
-                db.MCModPack,
-                db.MCMods_to_MCModPacks,
-                db.MCEMCConfig,
-                db.MCEMC,
-                db.MCRecipe,
-                db.MCRecipeInput
+                db.MinecraftUser,
+                db.MinecraftInstance,
+                db.MinecraftAdvancement,
+                db.MinecraftUserAdvancement,
+                db.MinecraftDeathObject,
+                db.MinecraftDeathSource,
+                db.MinecraftDeathCause,
+                db.MinecraftDeath,
+                db.MinecraftDeathTaunt
             ]
         )
         

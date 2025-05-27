@@ -1,35 +1,43 @@
-# stuff strictly related to discord
-discord:
-    # core config stuff
-    core:
-        token:    "never commit this"
-        log_path: "path/to/log.file"
-    # bot intents
-    intents:
-      # https://discordpy.readthedocs.io/en/stable/intents.html
-      # intents checklist
-      auto_moderation:                false
-      auto_moderation_configuration:  false
-      auto_moderation_execution:      false
-      bans:                           false
-      dm_messages:                    false
-      dm_reactions:                   false
-      dm_typing:                      false
-      emojis:                         false
-      emojis_and_stickers:            false
-      guild_messages:                 false
-      guild_reactions:                false
-      guild_scheduled_events:         false
-      guild_typing:                   false
-      guilds:                         false
-      integrations:                   false
-      invites:                        false
-      members:                        false
-      message_content:                false
-      messages:                       false
-      presences:                      false
-      reactions:                      false
-      typing:                         false
-      value:                          false
-      voice_states:                   false
-      webhooks:                       false
+server_dir: "/home/your_username/minecraft_server" #not good
+discord_token: "your-discord-bot-token-here"
+discord_channel_id: 123456789012345678
+default_admin_id: 123456789012345678
+idle_timeout: 300
+items_per_page: 5
+database:
+  database: "minecraft_wrapper"
+  user: "your_db_user"
+  password: "your_db_password"
+  host: "localhost"
+  port: 3306
+instances:
+  default:
+    java_path: "/usr/lib/jvm/java-17-openjdk/bin/java"
+    sync_script: "/home/your_username/minecraft_wrapper/sync_default.py"
+    mmm: "/home/your_username/minecraft_wrapper/mmm_default"
+    jar: "server.jar"
+    args:
+      - "-Xmx4G"
+      - "-Xms2G"
+      - "-jar"
+      - "server.jar"
+      - "nogui"
+  modpack2:
+    java_path: "/usr/lib/jvm/java-21-openjdk/bin/java"
+    sync_script: "/home/your_username/minecraft_wrapper/sync_modpack2.py"
+    mmm: "/home/your_username/minecraft_wrapper/mmm_modpack2"
+    jar: "modpack2.jar"
+    args:
+      - "-Xmx6G"
+      - "-Xms4G"
+      - "-jar"
+      - "modpack2.jar"
+      - "nogui"
+ignored_patterns:
+  - "\\[Server thread/INFO\\]: \\[minecraft/Server\\]: Saving the game.*"
+  - "\\[Server thread/INFO\\]: \\[minecraft/Server\\]: Time elapsed.*"
+death_patterns:
+  custom_explosion:
+    pattern: "\\[Server thread/INFO\\]: (?P<player>\\S+) was blown up by (?P<source>\\S+)(?: using (?P<cause>\\S+))?(?: (?P<details>.+))?"
+  custom_pvp:
+    pattern: "\\[Server thread/INFO\\]: (?P<player>\\S+) was killed by (?P<source>\\S+) using (?P<cause>\\S+)(?: (?P<details>.+))?"

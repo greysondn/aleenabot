@@ -1,6 +1,7 @@
 from peewee import BooleanField
 from peewee import CharField
 from peewee import DatabaseProxy
+from peewee import DateTimeField
 from peewee import FloatField
 from peewee import ForeignKeyField
 from peewee import IntegerField
@@ -21,7 +22,7 @@ def initDB(
     if _type == "sqlite":
         db.initialize(SqliteDatabase(config["path"], pragmas=config["pragmas"]))
     elif _type == "mysql":
-        raise NotImplementedError("MySQL support hasn't been written yet!")
+        db.initialize(MySQLDatabase(config["database"], user=config["user"], password=config["password"], host=config["host"], port=config["port"]))
     else:
         raise ValueError("Invalid database type!")
 
@@ -42,161 +43,86 @@ class User(BaseModel):
     name = CharField()
     displayName = CharField()
 
+class Permission(BaseModel):
+    '''Represents permissions the user has within the bot'''
+    name = CharField()
+    description = CharField()
+
+class Permissions(BaseModel):
+    '''list of permissions with some metadata for users'''
+    user = ForeignKeyField(User)
+    permission = ForeignKeyField(Permission)
+    active = BooleanField()
+    datetime = DateTimeField()
+    reason = CharField()
+
+# ------------------------------------------------------------------------------
+# Discord Models
+# ------------------------------------------------------------------------------
+class DiscordUser(BaseModel):
+    '''linkage between the core user and their discord id(s)'''
+    user = ForeignKeyField(User)
+    accountid = CharField()
+
 # ------------------------------------------------------------------------------
 # minecraft models
 # ------------------------------------------------------------------------------
-class MCMinecraftUser(BaseModel):
+
+# core
+class MinecraftUser(BaseModel):
     '''A user in minecraft'''
     user = ForeignKeyField(User)
+    name = CharField()
     uuid = CharField()
+    current = BooleanField()
 
-class MCMod(BaseModel):
-    """A mod for minecraft"""
+class MinecraftInstance(BaseModel):
+    '''Naively represents an instance we've launched'''
     name = CharField()
+    version = CharField()
+    loader = CharField()
+    description = CharField()
+    advancementsEnabled = BooleanField()
+    storageEnabled = BooleanField()
+    lastLaunched = DateTimeField()
 
-class MCModLoader(BaseModel):
-    """A mod loader for minecraft"""
+# advancements
+class MinecraftAdvancement(BaseModel):
+    '''We assume it's an advancement somewhere in Minecraft.'''
     name = CharField()
-
-class MCMinecraftVersion(BaseModel):
-    """A version of minecraft"""
-    version  = CharField()
-    nickname = CharField()
-
-class MCModVersion(BaseModel):
-    """A specific version of a mod in minecraft"""
-    mod              = ForeignKeyField(MCMod)
-    minecraftVersion = ForeignKeyField(MCMinecraftVersion)
-    modLoader        = ForeignKeyField(MCModLoader)
-    version          = CharField()
-    sha3Checksum     = CharField() # 512
-    shakeChecksum    = CharField() # 256
-    filename         = CharField() # expected, not literal
-
-class MCItemTag(BaseModel):
-    registryName = CharField()
-
-class MCEffectType(BaseModel):
-    name = CharField()
-
-class MCEffect(BaseModel):
-    name          = CharField()
-    registryName  = CharField()
-    effectType    = ForeignKeyField(MCEffectType)
-    isInstant     = BooleanField()
-    liquidColor   = CharField()
-
-class MCRarity(BaseModel):
-    name = CharField()
-
-class MCItemArchetype(BaseModel):
-    name = CharField()
-
-class MCEnchantment(BaseModel):
-    name = CharField()
-    registryName = CharField()
-    minLevel = IntegerField()
-    maxLevel = IntegerField()
-    rarity   = ForeignKeyField(MCRarity)
-    isCurse  = BooleanField()
-    archetype = ForeignKeyField(MCItemArchetype)
-    isAllowedOnBooks = BooleanField()
-    isTreasure = BooleanField()
-
-class MCItem(BaseModel):
-    """An item in Minecraft"""
-    name         = CharField()
     registryName = CharField()
     
-    lore                 = CharField(null=True)
-    nbt                  = CharField(null=True)
-    source               = ForeignKeyField(MCMod)
-    firstSourceVersion   = ForeignKeyField(MCModVersion)
-    lastSourceVersion    = ForeignKeyField(MCModVersion)
-    
-    material       = CharField(null=True)
-    slot           = CharField(null=True)
-    archetype      = ForeignKeyField(MCItemArchetype, null=True)
-    translationKey = CharField()
-    isBlockitem    = BooleanField()
+class MinecraftUserAdvancement(BaseModel):
+    '''A linkage between user and advacements'''
+    user = ForeignKeyField(MinecraftUser)
+    advancement = ForeignKeyField(MinecraftAdvancement)
+    date = DateTimeField()
+    instance = ForeignKeyField(MinecraftInstance)
 
-    attackDamage         = FloatField()
-    attackDamageModifier = FloatField()
-    attackSpeed          = FloatField()
-    attackSpeedModifer   = FloatField()
-    burnTime             = FloatField()
-    canEatWhileFull      = BooleanField()
-    damageReduceAmount   = FloatField()
-    durability           = FloatField()
-    efficiency           = FloatField()
-    enchantability       = FloatField()
-    harvestLevel         = FloatField()
-    healing              = FloatField()
-    isFastEating         = FloatField()
-    isMeat               = BooleanField()
-    inventoryModelName   = CharField()
-    maxDamage            = FloatField()
-    maxStackSize         = IntegerField()
-    saturation           = FloatField()
-    toughness            = FloatField()
-    useDuration          = FloatField()
-
-class MCItemOrItemTag(BaseModel):
-    item = ForeignKeyField(MCItem,    null = True)
-    tag  = ForeignKeyField(MCItemTag, null = True)
-
-class MCItems_to_MCEffects(BaseModel):
-    item    = ForeignKeyField(MCItem)
-    effect  = ForeignKeyField(MCEffect)
-
-class MCItemRepairMaterials(BaseModel):
-    item            = ForeignKeyField(MCItem)
-    repairMaterial  = ForeignKeyField(MCItem)
-
-class MCItems_to_MCTags(BaseModel):
-    item = ForeignKeyField(MCItem)
-    tag  = ForeignKeyField(MCItemTag)
-
-class MCModPack(BaseModel):
-    """A standard issue modpack for minecraft"""
+# death
+class MinecraftDeathObject(BaseModel):
     name = CharField()
 
-class MCMods_to_MCModPacks(BaseModel):
-    modpack = ForeignKeyField(MCModPack)
-    mod     = ForeignKeyField(MCModVersion)
+class MinecraftDeathSource(BaseModel):
+    name = CharField()
 
-class MCEMCConfig(BaseModel):
-    name           = CharField()
-    modPack        = ForeignKeyField(MCModPack)
-    baseValue      = IntegerField()
-    allowInfinite  = BooleanField()
-    importDefaults = BooleanField()
+class MinecraftDeathCause(BaseModel):
+    name = CharField()
 
-class MCEMC(BaseModel):
-    config          = ForeignKeyField(MCModPack)
-    item            = ForeignKeyField(MCItem)
-    isTransmutable  = BooleanField()
-    value           = IntegerField()
-    resolvable      = BooleanField()
-    layer           = IntegerField()
-    lockValue       = BooleanField()
-
-class MCRecipe(BaseModel):
-    registryName = CharField()
-    outputItem   = ForeignKeyField(MCItem)
-    enabled      = BooleanField()
-    outputCount  = IntegerField()
-    group        = CharField(null=True)
-    serializer   = CharField()
-    icon         = CharField()
-    isShapeless  = BooleanField()
-    inputPattern = CharField(null=True)
-    station      = ForeignKeyField(MCItem)
-    isDynamic    = BooleanField()
-    # csv_line["Class"]
-
-class MCRecipeInput(BaseModel):
-    recipe = ForeignKeyField(MCRecipe)
-    item   = ForeignKeyField(MCItemOrItemTag)
-    count  = IntegerField()
-    char   = CharField(null=True)
+class MinecraftDeath(BaseModel):
+    cause = ForeignKeyField(MinecraftDeathCause)
+    deathString = CharField()
+    deathObject = ForeignKeyField(MinecraftDeathObject)
+    user = ForeignKeyField(MinecraftUser)
+    source = ForeignKeyField(MinecraftDeathSource)
+    indirectSource = ForeignKeyField(MinecraftDeathSource)
+    datetime = DateTimeField()
+    instance = ForeignKeyField(MinecraftInstance)
+    
+class MinecraftDeathTaunt(BaseModel):
+    cause = ForeignKeyField(MinecraftDeathCause)
+    object = ForeignKeyField(MinecraftDeathObject)
+    source = ForeignKeyField(MinecraftDeathSource)
+    indirectSource = ForeignKeyField(MinecraftDeathSource)
+    writer = ForeignKeyField(User)
+    taunt = CharField()
