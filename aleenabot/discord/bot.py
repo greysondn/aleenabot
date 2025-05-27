@@ -7,7 +7,6 @@ import logging
 import logging.handlers
 import re
 import subprocess
-import systemd.daemon # type: ignore  - curse windows
 import sys
 import time
 import yaml
