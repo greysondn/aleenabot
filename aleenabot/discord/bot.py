@@ -475,15 +475,6 @@ async def stop_server(discord_channel):
         clear_state()
 
 # ------------------------------------------------------------------------------
-# Host System Helpers
-# ------------------------------------------------------------------------------
-async def watchdog_ping():
-    """Ping systemd watchdog."""
-    while True:
-        systemd.daemon.notify("WATCHDOG=1")
-        await asyncio.sleep(30)
-
-# ------------------------------------------------------------------------------
 # state helpers
 # ------------------------------------------------------------------------------
 def save_state():
@@ -647,9 +638,7 @@ async def on_ready():
         await channel.send("Detected crash (server was running). Cleaned up state.") # type: ignore
     else:
         logger.info("No crash detected, starting fresh")
-    asyncio.create_task(watchdog_ping())
-    logger.info("Started systemd watchdog pings")
-
+        
 # TODO: Fix Logic
 @bot.command()
 @cooldown(1, 10, BucketType.user)
