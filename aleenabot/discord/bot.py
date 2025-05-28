@@ -54,7 +54,7 @@ unrecognized_logger.addHandler(unrecognized_handler)
 
 
 # Load config from YAML
-CONFIG_PATH = Path(__file__).parent / "config.yaml"
+CONFIG_PATH = Path(__file__).parent / ".." / ".."/ "config.yaml"
 try:
     with open(CONFIG_PATH, "r") as f:
         config = yaml.safe_load(f)
