@@ -6,8 +6,8 @@ from aleenabot.database.migration import *
 def main():
     # create argparse, parse args
     parser = argparse.ArgumentParser(description='migrate db from one version to another - currently runs all migrations')
-    parser.add_argument("from", required=True, type=str, help="the version we should be starting from - four digit string")
-    parser.add_argument("to", required=True, type=str, help="the version we should end at - four digit string")
+    parser.add_argument("from", type=str, help="the version we should be starting from - four digit string")
+    parser.add_argument("to", type=str, help="the version we should end at - four digit string")
     args = vars(parser.parse_args())
 
     # load database config
