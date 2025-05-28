@@ -88,7 +88,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # ------------------------------------------------------------------------------
 # Generic Helpers
 # ------------------------------------------------------------------------------
-async def getCurrentUTCTime() -> str:
+def getCurrentUTCTime() -> str:
     ret = ""
     
     swp = datetime.now()
