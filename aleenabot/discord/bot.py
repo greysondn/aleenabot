@@ -586,8 +586,9 @@ async def on_ready():
         
     # init and hook database
     try:
-        database.connect()
-        logger.info("Connected to MariaDB")
+        initDB("mysql", DB_CONFIG)
+        with database.atomic():
+            logger.info("Connected to MariaDB")
     except Exception as e:
         logger.error(f"Failed to connect to MariaDB: {e}")
         sys.exit(1)
