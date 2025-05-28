@@ -164,3 +164,4 @@ aleenabot/scripts/database.db
 aleenabot/scripts/database.db-shm
 aleenabot/scripts/database.db-wal
 /doc/database.dia~
+config.yaml
