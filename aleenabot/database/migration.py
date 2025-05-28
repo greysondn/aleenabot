@@ -1,3 +1,4 @@
+from playhouse.migrate import MySQLMigrator
 from playhouse.migrate import SqliteDatabase
 from playhouse.migrate import SqliteMigrator
 from playhouse.migrate import migrate
@@ -129,6 +130,9 @@ def initMigrator(
         _type:str="sqlite",
         config = {"path":"database.db", "pragmas":{"journal_mode":"wal"}}
     ):
+    
+    global migrator
+    
     # init db
     db.initDB(_type, config)
     
@@ -136,7 +140,7 @@ def initMigrator(
     if _type == "sqlite":
         migrator = SqliteMigrator(_db)
     elif _type == "mysql":
-        raise NotImplementedError("MySQL support hasn't been written yet!")
+        migrator = MySQLMigrator(_db)
     else:
         raise ValueError("Invalid database type!")
 
