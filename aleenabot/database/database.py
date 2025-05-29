@@ -50,8 +50,8 @@ class Permission(BaseModel):
 
 class Permissions(BaseModel):
     '''list of permissions with some metadata for users'''
-    user = ForeignKeyField(User)
-    permission = ForeignKeyField(Permission)
+    user = ForeignKeyField(User, backref="grants")  # Backref to User.grants
+    permission = ForeignKeyField(Permission, backref="grants")  # Backref to Permission.grants
     active = BooleanField()
     datetime = DateTimeField()
     reason = CharField()
@@ -61,7 +61,7 @@ class Permissions(BaseModel):
 # ------------------------------------------------------------------------------
 class DiscordUser(BaseModel):
     '''linkage between the core user and their discord id(s)'''
-    user = ForeignKeyField(User)
+    user = ForeignKeyField(User, backref="discord_accounts")  # Backref to User.discord_accounts
     accountid = CharField()
 
 # ------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ class DiscordUser(BaseModel):
 # core
 class MinecraftUser(BaseModel):
     '''A user in minecraft'''
-    user = ForeignKeyField(User)
+    user = ForeignKeyField(User, backref="minecraft_accounts")  # Backref to User.minecraft_accounts
     name = CharField()
     uuid = CharField()
     current = BooleanField()

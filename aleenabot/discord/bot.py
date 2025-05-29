@@ -839,44 +839,59 @@ async def serverdeaths(ctx):
 @cooldown(1, 5, BucketType.user)
 async def users(ctx):
     """List all users with their Discord and Minecraft IDs, and admin status."""
-    # Check if user is allowed to run command
     if not hasPermissionDiscord(str(ctx.author.id), "bot:command:users"):
         await ctx.send("You don't have permission")
         return
 
     try:
         with database.atomic():
-            users = (
-                User.select(
-                    User.name,  # name
-                    User.displayName,  # fancy name
-                    DiscordUser.accountid,  # Discord tag
-                    MinecraftUser.name.alias("mc_name"),  # Minecraft name
-                    MinecraftUser.uuid,  # Minecraft UUID
-                    # Check if user is admin
-                    fn.EXISTS(
-                        Permissions.select()
-                        .where(
-                            (Permissions.user == User) &
-                            (Permissions.permission == Permission.get(Permission.name == "bot:admin")) &
-                            (Permissions.active == True)
-                        )
-                    ).alias("is_admin")
-                )
-                .join(DiscordUser, JOIN.LEFT_OUTER)  # Maybe no Discord tag
-                .switch(User)  # Reset to User for next join
-                .join(MinecraftUser, JOIN.LEFT_OUTER)  # Maybe no Minecraft tag
-                .order_by(User.name)  # Sort by name, nice and tidy
-            )
+            users = User.select().order_by(User.name)
+            if not users.exists():
+                await ctx.send("No users found in the database.")
+                logger.info(f"{ctx.author.id} checked user list, no users found")
+                return
 
-            # Message the list of users
-            if users:
-                msg = "Users:\n" + "\n".join([
-                    f"- {u.displayName} (Discord: {u.accountid or 'None'}, MC: {u.mc_name or 'None'} [{u.uuid or 'N/A'}], Admin: {'Yes' if u.is_admin else 'No'})"
-                    for u in users
-                ])
-            else:
-                msg = "No users found in the database."
+            user_list = []
+            admin_perm = Permission.get_or_none(Permission.name == "bot:admin")
+
+            for user in users:
+                # Get Discord ID (first account, if any)
+                discord_id = "None"
+                try:
+                    discord_id = user.discord_accounts[0].accountid if user.discord_accounts else "None"
+                except IndexError:
+                    pass
+
+                # Get Minecraft name/UUID (current account, if any)
+                mc_name, mc_uuid = "None", "N/A"
+                try:
+                    mc_account = next((mc for mc in user.minecraft_accounts if mc.current), None)
+                    if mc_account:
+                        mc_name = mc_account.name
+                        mc_uuid = mc_account.uuid
+                except (IndexError, AttributeError):
+                    pass
+
+                # Check admin status
+                is_admin = False
+                if admin_perm:
+                    is_admin = any(
+                        grant.permission.id == admin_perm.id and grant.active
+                        for grant in user.grants
+                    )
+
+                user_list.append({
+                    "displayName": user.displayName,
+                    "discord_id": discord_id,
+                    "mc_name": mc_name,
+                    "mc_uuid": mc_uuid,
+                    "is_admin": is_admin
+                })
+
+            msg = "Users:\n" + "\n".join([
+                f"- {u['displayName']} (Discord: {u['discord_id']}, MC: {u['mc_name']} [{u['mc_uuid']}], Admin: {'Yes' if u['is_admin'] else 'No'})"
+                for u in user_list
+            ])
             await ctx.send(msg)
             logger.info(f"{ctx.author.id} checked user list")
     except Exception as e:
