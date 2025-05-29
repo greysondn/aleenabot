@@ -692,10 +692,14 @@ async def exec(ctx, message):
     global server_process
     global server_running
     
-    if not hasPermissionDiscord(ctx.author.id, "bot:discord:cmd:exec"):
-        await ctx.send("You don't have permission!")
-        return
-    
+    try:
+        if not hasPermissionDiscord(ctx.author.id, "bot:discord:cmd:exec"):
+            await ctx.send("You don't have permission!")
+            return
+    except Exception as e:
+        await ctx.send(f"Error checking database: {e}")
+        logger.error(f"Error checking database: {e}")
+        
     if not server_running or server_process is None:
         await ctx.send("Server is not running!")
         return
