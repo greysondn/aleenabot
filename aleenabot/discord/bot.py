@@ -135,6 +135,7 @@ async def inputToMinecraftConsole(message, discord_channel):
     except Exception as e:
         await discord_channel.send(f"Error sending message: {str(e)}")
         logger.error(f"Error sending message: {e}")
+        raise Exception({e})
         
 # ------------------------------------------------------------------------------
 # Minecraft server output helpers
