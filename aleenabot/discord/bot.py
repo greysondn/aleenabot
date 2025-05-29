@@ -857,13 +857,14 @@ async def users(ctx):
                     fn.EXISTS(
                         Permissions.select()
                         .where(
-                            Permissions.user == User and
-                            Permissions.permission == Permission.get(Permission.name == "bot:admin") and
-                            Permissions.active == True
+                            (Permissions.user == User) &
+                            (Permissions.permission == Permission.get(Permission.name == "bot:admin")) &
+                            (Permissions.active == True)
                         )
                     ).alias("is_admin")
                 )
                 .join(DiscordUser, JOIN.LEFT_OUTER)  # Maybe no Discord tag
+                .switch(User)  # Reset to User for next join
                 .join(MinecraftUser, JOIN.LEFT_OUTER)  # Maybe no Minecraft tag
                 .order_by(User.name)  # Sort by name, nice and tidy
             )
