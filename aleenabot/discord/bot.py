@@ -114,6 +114,29 @@ def minecraftNameToUser(name:str):
     return ret
 
 # ------------------------------------------------------------------------------
+# Minecraft server input helpers
+# ------------------------------------------------------------------------------
+
+async def inputToMinecraftConsole(message, discord_channel):
+    """Send as input to minecraft console whatever this message is"""
+    global server_process
+    global server_running
+    
+    # make sure server is running
+    if ((not server_running) or (server_process is None)):
+        await discord_channel.send("Server is not running!")
+        return # TODO: Fix multiple returns
+    
+    # actually try sending message
+    try:
+        server_process.stdin.write(f"{message}\n".encode("utf-8")) #type: ignore
+        await server_process.stdin.drain() #type: ignore
+        logger.info(f"Sent to server: {message}")
+    except Exception as e:
+        await discord_channel.send(f"Error sending message: {str(e)}")
+        logger.error(f"Error sending message: {e}")
+        
+# ------------------------------------------------------------------------------
 # Minecraft server output helpers
 # ------------------------------------------------------------------------------
 
@@ -694,25 +717,26 @@ async def exec(ctx, message):
     global server_process
     global server_running
     
+    # make sure user has permission
     try:
         if not hasPermissionDiscord(ctx.author.id, "bot:command:exec"):
             await ctx.send("You don't have permission!")
-            return
+            return #TODO: fix multiple returns
     except Exception as e:
         await ctx.send(f"Error checking database: {e}")
         logger.error(f"Error checking database: {e}")
-        
-    if not server_running or server_process is None:
-        await ctx.send("Server is not running!")
-        return
+
+    # send message to minecraft console
     try:
-        server_process.stdin.write(f"{message}\n".encode("utf-8")) #type: ignore
-        await server_process.stdin.drain() #type: ignore
-        await ctx.send(f"Sent to server: {message}")
-        logger.info(f"Sent to server: {message}")
+        await inputToMinecraftConsole(message, ctx)
     except Exception as e:
         await ctx.send(f"Error sending message: {str(e)}")
         logger.error(f"Error sending message: {e}")
+        
+    # report back
+    await ctx.send(f"Sent to server: {message}")
+        
+    
 
 '''
 # TODO: Fix Logic
