@@ -543,11 +543,12 @@ def hasPermissionDiscord(discordId:str, permissionName:str) -> bool:
     '''Check if user has permission for a command using their discord ID'''
     ret = False
     
-    # discord user exists?
-    discordUser = DiscordUser.get_or_none(accountid = discordId)
-    if (discordUser is not None):
-        user = discordUser.user
-        ret = hasPermission(user, permissionName)
+    with database.atomic():
+        # discord user exists?
+        discordUser = DiscordUser.get_or_none(accountid = discordId)
+        if (discordUser is not None):
+            user = discordUser.user
+            ret = hasPermission(user, permissionName)
     
     return ret
     
