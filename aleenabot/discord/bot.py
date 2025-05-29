@@ -898,6 +898,55 @@ async def users(ctx):
         await ctx.send(f"Error checking users: {str(e)}")
         logger.error(f"Error checking users: {e}")
 
+@bot.command()
+@cooldown(1, 5, BucketType.user)
+async def register(ctx, discord_id: str):
+    """Register a new user with their Discord ID."""
+    if not hasPermissionDiscord(str(ctx.author.id), "bot:command:register"):
+        await ctx.send("You don't have permission")
+        return
+
+    if not discord_id.isdigit() or len(discord_id) < 17:
+        await ctx.send("Invalid Discord ID. Must be a numeric ID (e.g., 123456789012345678).")
+        return
+
+    try:
+        with database.atomic():
+            # Check if Discord ID is already linked
+            existing_discord = DiscordUser.get_or_none(DiscordUser.accountid == discord_id)
+            if existing_discord:
+                await ctx.send(f"Discord ID {discord_id} is already linked to user {existing_discord.user.displayName}.")
+                return
+            
+            # try to fetch discord user for later use
+            try:
+                discord_user = await bot.fetch_user(int(discord_id))
+            except Exception as e:
+                logger.warning(f"Could not fetch Discord user for {discord_id}: {e}")
+            
+            # Determine global name of user on discord
+            try:
+                name = discord_user.global_name
+            except Exception as e:
+                logger.warning(f"Could not fetch Discord global name for {discord_id}: {e}")
+
+
+            # Try to fetch Discord username for displayName
+            try:
+                display_name = discord_user.display_name
+            except Exception as e:
+                logger.warning(f"Could not fetch Discord display name for {discord_id}: {e}")
+
+            # Create User and DiscordUser
+            user = User.create(name=name, displayName=display_name)
+            DiscordUser.create(user=user, accountid=discord_id)
+
+            await ctx.send(f"Registered user {user.displayName} with Discord ID {discord_id}.")
+            logger.info(f"{ctx.author.id} registered user {user.name} with Discord ID {discord_id}")
+    except Exception as e:
+        await ctx.send(f"Error registering user: {str(e)}")
+        logger.error(f"Error registering user with Discord ID {discord_id}: {e}")
+
 '''
 # TODO: Fix Logic
 @bot.command()
