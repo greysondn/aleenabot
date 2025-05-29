@@ -693,7 +693,7 @@ async def exec(ctx, message):
     global server_running
     
     try:
-        if not hasPermissionDiscord(ctx.author.id, "bot:discord:cmd:exec"):
+        if not hasPermissionDiscord(ctx.author.id, "bot:command:exec"):
             await ctx.send("You don't have permission!")
             return
     except Exception as e:
