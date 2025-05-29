@@ -467,8 +467,7 @@ async def stop_server(discord_channel):
         return
 
     try:
-        server_process.stdin.write(b"stop\n") # type: ignore
-        await server_process.stdin.drain() # type: ignore
+        await inputToMinecraftConsole("stop", discord_channel)
         await discord_channel.send("Sent stop command to server...")
         logger.info("Sent stop command")
         try:
