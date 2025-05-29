@@ -1000,6 +1000,41 @@ async def addperm(ctx, discord_id: str, permission: str):
         await ctx.send(f"Error adding permission: {str(e)}")
         logger.error(f"Error adding permission {permission} for Discord ID {discord_id}: {e}")
 
+@bot.command()
+@cooldown(1, 5, BucketType.user)
+async def listallpermissions(ctx):
+    """List all permissions in the database."""
+    if not hasPermissionDiscord(str(ctx.author.id), "bot:command:listpermissions"):
+        await ctx.send("You don't have permission")
+        return
+
+    try:
+        with database.atomic():
+            permissions = Permission.select().order_by(Permission.name)
+            if not permissions.exists():
+                await ctx.send("No permissions found in the database.")
+                logger.info(f"{ctx.author.id} checked permissions, none found")
+                return
+
+            perm_list = []
+            for perm in permissions:
+                active_grants = sum(1 for grant in perm.grants if grant.active)
+                perm_list.append({
+                    "name": perm.name,
+                    "description": perm.description or "No description",
+                    "active_grants": active_grants
+                })
+
+            msg = "Permissions:\n" + "\n".join([
+                f"- {p['name']} (Description: {p['description']}, Active Grants: {p['active_grants']})"
+                for p in perm_list
+            ])
+            await ctx.send(msg)
+            logger.info(f"{ctx.author.id} listed permissions")
+    except Exception as e:
+        await ctx.send(f"Error listing permissions: {str(e)}")
+        logger.error(f"Error listing permissions: {e}")
+
 '''
 # TODO: Fix Logic
 @bot.command()
