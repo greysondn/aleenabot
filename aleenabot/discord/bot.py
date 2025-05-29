@@ -947,48 +947,58 @@ async def register(ctx, discord_id: str):
         await ctx.send(f"Error registering user: {str(e)}")
         logger.error(f"Error registering user with Discord ID {discord_id}: {e}")
 
-'''
-# TODO: Fix Logic
+
+
 @bot.command()
-async def addperm(ctx, player, command):
-    """Add a permission for a player."""
-    if not check_permission(ctx.author.id, "manage_permissions"):
-        await ctx.send("You don't have permission, you filthy mutt!")
+@cooldown(1, 5, BucketType.user)
+async def addperm(ctx, discord_id: str, permission: str):
+    """Add a permission to a user by their Discord ID."""
+    if not hasPermissionDiscord(str(ctx.author.id), "bot:command:addperm"):
+        await ctx.send("You don't have permission")
         return
+
+    if not discord_id.isdigit() or len(discord_id) < 17:
+        await ctx.send("Invalid Discord ID. Must be a numeric ID (e.g., 123456789012345678).")
+        return
+
     try:
-        target_user = User.get(User.minecraft_id == player)
-        Permission.get_or_create(user=target_user, command=command)
-        await ctx.send(f"Added {command} permission for {player}")
-        logger.info(f"Added {command} permission for {player} by {ctx.author.id}")
-    except User.DoesNotExist:
-        await ctx.send(f"Player {player} not found")
+        with database.atomic():
+            # Find user by Discord ID
+            discord_user = DiscordUser.get_or_none(DiscordUser.accountid == discord_id)
+            if not discord_user:
+                await ctx.send(f"No user found with Discord ID {discord_id}.")
+                return
+            target_user = discord_user.user
+
+            # Create or get permission
+            perm, _ = Permission.get_or_create(
+                name=permission,
+                defaults={"description": f"Permission {permission}"}
+            )
+
+            # Grant permission
+            perm_grant, created = Permissions.get_or_create(
+                user=target_user,
+                permission=perm,
+                defaults={
+                    "active": True,
+                    "datetime": getCurrentUTCTime(),
+                    "reason": f"Granted by {ctx.author.id} via !addperm"
+                }
+            )
+
+            if not created and not perm_grant.active:
+                # Reactivate if previously deactivated
+                perm_grant.active = True
+                perm_grant.datetime = getCurrentUTCTime()
+                perm_grant.reason = f"Reactivated by {ctx.author.id} via !addperm"
+                perm_grant.save()
+
+            await ctx.send(f"Added permission {permission} to {target_user.displayName}.")
+            logger.info(f"{ctx.author.id} added permission {permission} to user {target_user.name} (Discord ID: {discord_id})")
     except Exception as e:
         await ctx.send(f"Error adding permission: {str(e)}")
-        logger.error(f"Error adding permission: {e}")
-'''
-
-'''
-# TODO: Fix Logic
-@bot.command()
-async def removeperm(ctx, player, command):
-    """Remove a permission for a player."""
-    if not check_permission(ctx.author.id, "manage_permissions"):
-        await ctx.send("You don't have permission, you filthy mutt!")
-        return
-    try:
-        target_user = User.get(User.minecraft_id == player)
-        deleted = Permission.delete().where(
-            (Permission.user == target_user) & (Permission.command == command)
-        ).execute()
-        msg = f"Removed {command} permission for {player}" if deleted else f"No {command} permission for {player}"
-        await ctx.send(msg)
-        logger.info(f"{msg} by {ctx.author.id}")
-    except User.DoesNotExist:
-        await ctx.send(f"Player {player} not found")
-    except Exception as e:
-        await ctx.send(f"Error removing permission: {str(e)}")
-        logger.error(f"Error removing permission: {e}")
-'''
+        logger.error(f"Error adding permission {permission} for Discord ID {discord_id}: {e}")
 
 '''
 # TODO: Fix Logic
