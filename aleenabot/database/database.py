@@ -8,6 +8,13 @@ from peewee import IntegerField
 from peewee import Model
 from peewee import MySQLDatabase
 from peewee import SqliteDatabase
+from playhouse.shortcuts import ReconnectMixin
+
+# ------------------------------------------------------------------------------
+# mixed in classes
+# ------------------------------------------------------------------------------
+class ReconnectMySQLDatabase(ReconnectMixin, MySQLDatabase):
+    pass
 
 # ------------------------------------------------------------------------------
 # database and helpers
@@ -22,7 +29,7 @@ def initDB(
     if _type == "sqlite":
         db.initialize(SqliteDatabase(config["path"], pragmas=config["pragmas"]))
     elif _type == "mysql":
-        db.initialize(MySQLDatabase(config["database"], user=config["user"], password=config["password"], host=config["host"], port=config["port"]))
+        db.initialize(ReconnectMySQLDatabase(config["database"], user=config["user"], password=config["password"], host=config["host"], port=config["port"]))
     else:
         raise ValueError("Invalid database type!")
 
