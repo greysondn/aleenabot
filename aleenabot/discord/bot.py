@@ -37,6 +37,8 @@ from discord.ext.commands import cooldown
 from discord.ext.commands import BucketType
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from peewee import fn
+from peewee import JOIN
 
 # Set up logging with rotation
 handler = logging.handlers.RotatingFileHandler("minecraft_wrapper.log", maxBytes=10*1024*1024, backupCount=5)
@@ -833,24 +835,52 @@ async def serverdeaths(ctx):
         await ctx.send(f"Error fetching server deaths: {str(e)}")
 '''
 
-'''
-# TODO: Fix Logic
 @bot.command()
+@cooldown(1, 5, BucketType.user)
 async def users(ctx):
-    """List user IDs."""
-    if not check_permission(ctx.author.id, "users"):
-        await ctx.send("You don't have permission, you filthy mutt!")
+    """List all users with their Discord and Minecraft IDs, and admin status."""
+    # Check if user is allowed to run command
+    if not hasPermissionDiscord(str(ctx.author.id), "bot:command:users"):
+        await ctx.send("You don't have permission")
         return
+
     try:
-        users = User.select().where(User.minecraft_id.is_null(False))
-        if users:
-            msg = "Users:\n" + "\n".join([f"- Discord: {u.discord_id}, Minecraft: {u.minecraft_id}, Op: {u.is_op}" for u in users])
-        else:
-            msg = "No users found."
-        await ctx.send(msg)
+        with database.atomic():
+            users = (
+                User.select(
+                    User.name,  # name
+                    User.displayName,  # fancy name
+                    DiscordUser.accountid,  # Discord tag
+                    MinecraftUser.name.alias("mc_name"),  # Minecraft name
+                    MinecraftUser.uuid,  # Minecraft UUID
+                    # Check if user is admin
+                    fn.EXISTS(
+                        Permissions.select()
+                        .where(
+                            Permissions.user == User and
+                            Permissions.permission == Permission.get(Permission.name == "bot:admin") and
+                            Permissions.active == True
+                        )
+                    ).alias("is_admin")
+                )
+                .join(DiscordUser, JOIN.LEFT_OUTER)  # Maybe no Discord tag
+                .join(MinecraftUser, JOIN.LEFT_OUTER)  # Maybe no Minecraft tag
+                .order_by(User.name)  # Sort by name, nice and tidy
+            )
+
+            # Message the list of users
+            if users:
+                msg = "Users:\n" + "\n".join([
+                    f"- {u.displayName} (Discord: {u.accountid or 'None'}, MC: {u.mc_name or 'None'} [{u.uuid or 'N/A'}], Admin: {'Yes' if u.is_admin else 'No'})"
+                    for u in users
+                ])
+            else:
+                msg = "No users found in the database."
+            await ctx.send(msg)
+            logger.info(f"{ctx.author.id} checked user list")
     except Exception as e:
-        await ctx.send(f"Error fetching users: {str(e)}")
-'''
+        await ctx.send(f"Error checking users: {str(e)}")
+        logger.error(f"Error checking users: {e}")
 
 '''
 # TODO: Fix Logic
