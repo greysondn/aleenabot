@@ -663,7 +663,7 @@ async def on_ready():
         await channel.send("Detected crash (server was running). Cleaned up state.") # type: ignore
     else:
         logger.info("No crash detected, starting fresh")
-        await channel.send("Will happen, happening, happened:\nAnd here we are, again and again.") # type: ignore
+        await channel.send("God has decided to let me live another day, and I'm about to make it everyone's problem.") # type: ignore
         
 # TODO: Fix Logic
 @bot.command()
