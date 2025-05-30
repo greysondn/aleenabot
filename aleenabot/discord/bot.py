@@ -124,8 +124,7 @@ async def inputToMinecraftConsole(message, discord_channel):
     
     # make sure server is running
     if ((not server_running) or (server_process is None)):
-        await discord_channel.send("Server is not running!")
-        return # TODO: Fix multiple returns
+        raise Exception("Server is not running!")
     
     # actually try sending message
     try:
@@ -717,6 +716,9 @@ async def exec(ctx, message):
     global server_process
     global server_running
     
+    # keep track of whether we had an error
+    hadError = False
+    
     # make sure user has permission
     try:
         if not hasPermissionDiscord(ctx.author.id, "bot:command:exec"):
@@ -725,6 +727,7 @@ async def exec(ctx, message):
     except Exception as e:
         await ctx.send(f"Error checking database: {e}")
         logger.error(f"Error checking database: {e}")
+        hadError = True
 
     # send message to minecraft console
     try:
@@ -732,9 +735,11 @@ async def exec(ctx, message):
     except Exception as e:
         await ctx.send(f"Error sending message: {str(e)}")
         logger.error(f"Error sending message: {e}")
+        hadError = True
         
     # report back
-    await ctx.send(f"Sent to server: {message}")
+    if (not hadError):
+        await ctx.send(f"Sent to server: {message}")
         
     
 
