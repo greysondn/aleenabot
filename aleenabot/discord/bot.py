@@ -399,7 +399,7 @@ async def start_server(discord_channel, instance_name="default"):
         await discord_channel.send("Server is already running!")
         return
 
-    instance = INSTANCES.get(instance_name, INSTANCES["default"])
+    instance = INSTANCES.get(instance_name)
     server_dir = Path(instance["server_dir"])  # Instance-specific
     java_path = instance.get("java_path", "java")
     sync_script = instance.get("sync_script", "sync.py")
