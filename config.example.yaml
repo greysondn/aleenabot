@@ -1,4 +1,3 @@
-server_dir: "/home/your_username/minecraft_server" #not good
 discord_token: "your-discord-bot-token-here"
 discord_channel_id: 123456789012345678
 default_admin_id: 123456789012345678
@@ -12,6 +11,7 @@ database:
   port: 3306
 instances:
   default:
+    server_dir: "/home/your_username/minecraft_server"
     java_path: "/usr/lib/jvm/java-17-openjdk/bin/java"
     sync_script: "/home/your_username/minecraft_wrapper/sync_default.py"
     mmm: "/home/your_username/minecraft_wrapper/mmm_default"
@@ -23,6 +23,7 @@ instances:
       - "server.jar"
       - "nogui"
   modpack2:
+    server_dir: "/home/your_username/minecraft_server"
     java_path: "/usr/lib/jvm/java-21-openjdk/bin/java"
     sync_script: "/home/your_username/minecraft_wrapper/sync_modpack2.py"
     mmm: "/home/your_username/minecraft_wrapper/mmm_modpack2"

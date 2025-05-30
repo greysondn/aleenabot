@@ -65,7 +65,6 @@ except Exception as e:
     sys.exit(1)
 
 # Config variables
-SERVER_DIR = Path(config.get("server_dir", "."))
 DISCORD_TOKEN = config["discord_token"]
 DISCORD_CHANNEL_ID = config["discord_channel_id"]
 DEFAULT_ADMIN_ID = config["default_admin_id"]
@@ -73,7 +72,7 @@ IDLE_TIMEOUT = config.get("idle_timeout", 300)
 DB_CONFIG = config["database"]
 INSTANCES = config["instances"]
 ITEMS_PER_PAGE = config.get("items_per_page", 5)
-STATE_FILE = SERVER_DIR / "wrapper_state.json"
+STATE_FILE = Path(__file__).parent / "bot_state.json"
 
 # globals
 server_process = None
@@ -401,12 +400,19 @@ async def start_server(discord_channel, instance_name="default"):
         return
 
     instance = INSTANCES.get(instance_name, INSTANCES["default"])
+    server_dir = Path(instance["server_dir"])  # Instance-specific
     java_path = instance.get("java_path", "java")
     sync_script = instance.get("sync_script", "sync.py")
     mmm_script = instance.get("mmm", "mmm")
     server_jar = instance["jar"]
     server_args = instance.get("args", ["-Xmx4G", "-Xms2G", "-jar", server_jar, "nogui"])
     current_instance = instance_name
+
+    # Ensure server_dir exists
+    if not server_dir.exists():
+        await discord_channel.send(f"Server directory {server_dir} does not exist!")
+        logger.error(f"Server directory {server_dir} does not exist")
+        return
 
     # TODO: enable below blocks, holy shit dude
 
@@ -427,7 +433,7 @@ async def start_server(discord_channel, instance_name="default"):
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            cwd=SERVER_DIR #TODO: FIX!!!!!
+            cwd=server_dir
         )
         if server_process.returncode is not None:
             server_running = False
