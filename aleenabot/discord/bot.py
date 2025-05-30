@@ -386,8 +386,19 @@ async def read_stream(stream, callback):
             line = await stream.readline()
             if not line:
                 break
-            line = line.decode("utf-8").strip()
-            await callback(line)
+            try:
+                # Decode bytes to string, handle non-standard inputs
+                if isinstance(line, bytes):
+                    line = line.decode("utf-8", errors="replace").strip()
+                elif isinstance(line, dict):
+                    logger.error(f"Received dict in stream: {line}")
+                    continue
+                elif not isinstance(line, str):
+                    logger.error(f"Unexpected line type {type(line)}: {line}")
+                    continue
+                await callback(line)
+            except Exception as e:
+                logger.error(f"Error processing line '{line}': {e}")
     except Exception as e:
         logger.error(f"Error reading stream: {e}")
 
