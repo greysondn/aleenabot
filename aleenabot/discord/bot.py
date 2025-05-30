@@ -443,7 +443,7 @@ async def start_server(discord_channel, instance_name="default"):
             return
         
         server_running = True
-        last_player_activity = None
+        last_player_activity = time.time()
         save_state()
         await discord_channel.send(f"Minecraft server started (instance: {instance_name})!")
         logger.info(f"Server started (instance: {instance_name})")
