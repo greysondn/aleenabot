@@ -674,7 +674,7 @@ async def on_ready():
 # TODO: Fix Logic
 @bot.command()
 @cooldown(1, 10, BucketType.user)
-async def startserver(ctx, instance_name="default"):
+async def startserver(ctx, instance_name="[none given]"):
     """Start the server with specified instance."""
     if not hasPermissionDiscord(str(ctx.author.id), "bot:command:startserver"):
         await ctx.send("You don't have permission!")
