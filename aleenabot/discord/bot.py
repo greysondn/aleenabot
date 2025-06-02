@@ -193,49 +193,61 @@ async def handle_system_item(line, action, data, discord_channel):
 
 async def handle_death(line, name, cause, source, indirectSource, obj, discord_channel):
     """Handle death events with custom fields."""
-    
-    # resolve instance
+    # Validate inputs
+    for var, value in [("name", name), ("cause", cause), ("source", source), ("indirectSource", indirectSource), ("obj", obj)]:
+        if value is not None and not isinstance(value, str):
+            logger.error(f"Invalid {var} type in handle_death: {value} (type: {type(value)})")
+            return
+
+    # Resolve instance
     global current_instance
-    mcInstance = MinecraftInstance. get_or_create(name = current_instance)[0]
-    
-    # resolve a user
+    mcInstance = MinecraftInstance.get_or_create(name=current_instance or "default")[0]
+
+    # Resolve user
     mcUser = minecraftNameToMinecraftUser(name)
-    
-    # set defaults past the break
-    if cause == None:
-        cause = "none"
-    if source == None:
-        source = "none"
-    if indirectSource == None:
-        indirectSource = "none"
-    if obj == None:
-        obj = "none"
-    
-    # fire up actual objects here    
-    mcCause = MinecraftDeathCause.get_or_create(name = cause)[0]
-    mcSource = MinecraftDeathSource.get_or_create(name = source)[0]
-    mcIndirectSource = MinecraftDeathSource.get_or_create(name = indirectSource)[0]
-    mcObject = MinecraftDeathObject.get_or_create(name = obj)[0]
-    
-    # log the death, yeah!
-    MinecraftDeath.create(
-        cause = mcCause,
-        deathString = line,
-        deathObject = mcObject,
-        user = mcUser,
-        source = mcSource,
-        indirectSource = mcIndirectSource,
-        instance = mcInstance,
-        datetime = getCurrentUTCTime()
-    )
-    
-    #TODO: add death taunting
-    # await discord_channel.send(f"**{player} died: {cause}**")
+
+    # Set defaults
+    cause = cause or "none"
+    source = source or "none"
+    indirectSource = indirectSource or "none"
+    obj = obj or "none"
+
+    # Create DB objects
+    try:
+        mcCause = MinecraftDeathCause.get_or_create(name=cause)[0]
+        mcSource = MinecraftDeathSource.get_or_create(name=source)[0]
+        mcIndirectSource = MinecraftDeathSource.get_or_create(name=indirectSource)[0]
+        mcObject = MinecraftDeathObject.get_or_create(name=obj)[0]
+
+        # Log death
+        MinecraftDeath.create(
+            cause=mcCause,
+            deathString=line,
+            deathObject=mcObject,
+            user=mcUser,
+            source=mcSource,
+            indirectSource=mcIndirectSource,
+            instance=mcInstance,
+            datetime=getCurrentUTCTime()
+        )
+        logger.info(f"Logged death for {name}: {cause}")
+    except Exception as e:
+        logger.error(f"Error logging death for {name}: {e}")
+        await discord_channel.send(f"Error logging death: {str(e)}")
+
+    # TODO: Add death taunting
+    # await discord_channel.send(f"**{name} died: {cause}**")
 
 async def handle_server_output(line, discord_channel):
     """Handle server output, parsing chat, advancements, items, deaths."""
     global active_players, last_player_activity
     logger.info(f"Server: {line}")
+
+    # Ensure line is a string
+    if not isinstance(line, str):
+        logger.error(f"Non-string line received: {line} (type: {type(line)})")
+        unrecognized_logger.debug(f"Unrecognized server output: {line}")
+        return
 
     # Regex patterns
     chat_pattern = re.compile(r"\[Server thread/INFO\] \[minecraft/Server\]: <([^>]+)> (.+)")
@@ -261,48 +273,52 @@ async def handle_server_output(line, discord_channel):
             return
 
         # Process known patterns
-        if match := chat_pattern.search(line):
-            player, message = match.groups()
-            await handle_chat(player, message, discord_channel)
-        elif match := join_pattern.search(line):
-            player = match.group(1)
-            await handle_join(player, discord_channel)
-        elif match := leave_pattern.search(line):
-            player = match.group(1)
-            await handle_leave(line, player, discord_channel)
-        elif match := advancement_pattern.search(line):
-            player, advancement = match.groups()
-            # TODO: Handle
-            # await handle_advancement(line, player, advancement, discord_channel)
-        elif match := default_death_pattern.search(line):
-            await handle_death(
-                line,
-                name=match.group("name"),
-                cause=match.group("cause"),
-                source=match.group("source"),
-                indirectSource=match.group("indirectsource"),
-                obj=match.group("details"),
-                discord_channel=discord_channel
-            )
-        elif any(match := p.search(line) for _, p in custom_death_patterns):
-            # Use first matching custom pattern
-            await handle_death(
-                line,
-                name=match.group("name"),
-                cause=match.group("cause"),
-                source=match.group("source"),
-                indirectSource=match.group("indirectsource"),
-                obj=match.group("details"),
-                discord_channel=discord_channel
-            )
-        elif match := system_item_pattern.search(line):
-            action, data = match.groups()
-            await handle_system_item(line, action, data, discord_channel)
-        elif match := action_pattern.search(line):
-            player = match.group(1)
-            await handle_action()
-        else:
-            unrecognized_logger.debug(f"Unrecognized server output: {line}")
+        try:
+            if match := chat_pattern.search(line):
+                player, message = match.groups()
+                await handle_chat(player, message, discord_channel)
+            elif match := join_pattern.search(line):
+                player = match.group(1)
+                await handle_join(player, discord_channel)
+            elif match := leave_pattern.search(line):
+                player = match.group(1)
+                await handle_leave(line, player, discord_channel)
+            elif match := advancement_pattern.search(line):
+                player, advancement = match.groups()
+                # TODO: Handle
+                # await handle_advancement(line, player, advancement, discord_channel)
+            elif match := default_death_pattern.search(line):
+                groups = match.groupdict()
+                await handle_death(
+                    line,
+                    name=groups.get("player", "unknown"),
+                    cause=groups.get("cause", "none"),
+                    source=groups.get("source", None),
+                    indirectSource=None,  # Not captured
+                    obj=groups.get("details", None),
+                    discord_channel=discord_channel
+                )
+            elif any((match := p.search(line)) for _, p in custom_death_patterns):
+                groups = match.groupdict() # type: ignore
+                await handle_death(
+                    line,
+                    name=groups.get("name", "unknown"),
+                    cause=groups.get("cause", "none"),
+                    source=groups.get("source", None),
+                    indirectSource=groups.get("indirectsource", None),
+                    obj=groups.get("details", None),
+                    discord_channel=discord_channel
+                )
+            elif match := system_item_pattern.search(line):
+                action, data = match.groups()
+                await handle_system_item(line, action, data, discord_channel)
+            elif match := action_pattern.search(line):
+                player = match.group(1)
+                await handle_action()
+            else:
+                unrecognized_logger.debug(f"Unrecognized server output: {line}")
+        except Exception as e:
+            logger.error(f"Error handling server output '{line}': {e}")
 
 
 
@@ -381,13 +397,16 @@ async def run_mmm(mmm_script):
 # TODO: Fix Logic
 async def read_stream(stream, callback):
     """Read a stream asynchronously."""
+    # Regex to strip ANSI escape codes
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    
     try:
         while True:
             line = await stream.readline()
             if not line:
                 break
             try:
-                # Decode bytes to string, handle non-standard inputs
+                # Decode bytes to string
                 if isinstance(line, bytes):
                     line = line.decode("utf-8", errors="replace").strip()
                 elif isinstance(line, dict):
@@ -396,6 +415,8 @@ async def read_stream(stream, callback):
                 elif not isinstance(line, str):
                     logger.error(f"Unexpected line type {type(line)}: {line}")
                     continue
+                # Strip ANSI codes
+                line = ansi_escape.sub('', line).strip()
                 await callback(line)
             except Exception as e:
                 logger.error(f"Error processing line '{line}': {e}")
