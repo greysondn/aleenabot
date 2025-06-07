@@ -5,6 +5,7 @@ import discord
 import json
 import logging
 import logging.handlers
+import pytz
 import re
 import subprocess
 import sys
@@ -30,6 +31,8 @@ from ..database.database import MinecraftInstance
 from ..database.database import MinecraftUser
 from ..database.database import MinecraftUserAdvancement
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
 from datetime import timezone
 from discord.ext import commands
@@ -73,6 +76,7 @@ DB_CONFIG = config["database"]
 INSTANCES = config["instances"]
 ITEMS_PER_PAGE = config.get("items_per_page", 5)
 STATE_FILE = Path(__file__).parent / "bot_state.json"
+SCHEDULED_MESSAGES = config.get("scheduled_messages", [])
 
 # globals
 server_process = None
@@ -676,7 +680,48 @@ async def on_ready():
             user = User.get_or_create(name=admin_name, displayName=admin_displayName)[0]
             dUser = DiscordUser.get_or_create(user=user, accountid = admin_accountID)[0]
             permissionGrant = Permissions.get_or_create(user=user, permission=permission, active=True, datetime=getCurrentUTCTime(), reason="Granted via config file")
+
+    # Initialize scheduler
+    scheduler = AsyncIOScheduler(timezone=pytz.UTC)  # Scheduler runs in UTC
+    scheduler.start()
+    logger.info("Scheduler started")
+    
+    # Schedule weekly messages from config
+    for msg_config in SCHEDULED_MESSAGES:
+        try:
+            channel_id = int(msg_config["channel_id"])
+            message = msg_config["message"]
+            cron_schedule = msg_config.get("cron_schedule", "0 9 * * 6")  # Default: Saturday 9 AM
+            timezone_str = msg_config.get("timezone", "America/New_York")  # Default: Eastern Time
+            channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+            if not isinstance(channel, discord.TextChannel):
+                logger.error(f"Invalid channel ID {channel_id} for scheduled message")
+                continue
             
+            # Validate timezone
+            try:
+                tz = pytz.timezone(timezone_str)
+            except pytz.exceptions.UnknownTimeZoneError:
+                logger.error(f"Invalid timezone {timezone_str} for channel {channel_id}")
+                continue
+            
+            async def send_scheduled_message():
+                try:
+                    await channel.send(message) # type: ignore
+                    logger.info(f"Sent scheduled message to channel {channel_id}: {message}")
+                except Exception as e:
+                    logger.error(f"Failed to send scheduled message to {channel_id}: {e}")
+            
+            scheduler.add_job(
+                send_scheduled_message,
+                trigger=CronTrigger.from_crontab(cron_schedule, timezone=tz),  # Use local timezone
+                id=f"scheduled_message_{channel_id}_{hash(message)}",
+                replace_existing=True
+            )
+            logger.info(f"Scheduled message for channel {channel_id}: {message} with cron {cron_schedule} in {timezone_str}")
+        except Exception as e:
+            logger.error(f"Failed to schedule message for channel {channel_id}: {e}")
+
     # check for clean shutdown
     state = load_state()
     if state and state.get("server_running"):

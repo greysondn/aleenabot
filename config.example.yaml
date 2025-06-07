@@ -42,3 +42,8 @@ death_patterns:
     pattern: "\\[Server thread/INFO\\]: (?P<player>\\S+) was blown up by (?P<source>\\S+)(?: using (?P<cause>\\S+))?(?: (?P<details>.+))?"
   custom_pvp:
     pattern: "\\[Server thread/INFO\\]: (?P<player>\\S+) was killed by (?P<source>\\S+) using (?P<cause>\\S+)(?: (?P<details>.+))?"
+scheduled_messages:
+  - channel_id: "1234567901234567890"
+    message: "This is an example message"
+    cron_schedule: "0 16 * * 6"  # Saturday at 4 PM local time
+    timezone: "America/New_York"

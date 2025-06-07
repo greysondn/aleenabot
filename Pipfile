@@ -8,6 +8,8 @@ pyyaml = "*"
 peewee = "*"
 pymysql = "*"
 "discord.py" = "*"
+pytz = "*"
+apscheduler = "*"
 
 [dev-packages]
 
