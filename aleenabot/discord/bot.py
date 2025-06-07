@@ -689,38 +689,38 @@ async def on_ready():
     # Schedule weekly messages from config
     for msg_config in SCHEDULED_MESSAGES:
         try:
-            channel_id = int(msg_config["channel_id"])
-            message = msg_config["message"]
-            cron_schedule = msg_config.get("cron_schedule", "0 9 * * 6")  # Default: Saturday 9 AM
-            timezone_str = msg_config.get("timezone", "America/New_York")  # Default: Eastern Time
-            channel = bot.get_channel(channel_id) or await bot.fetch_channel(channel_id)
+            sch_channel_id = int(msg_config["channel_id"])
+            sch_message = msg_config["message"]
+            sch_cron_schedule = msg_config.get("cron_schedule", "0 9 * * 6")  # Default: Saturday 9 AM
+            sch_timezone_str = msg_config.get("timezone", "America/New_York")  # Default: Eastern Time
+            sch_channel = bot.get_channel(sch_channel_id) or await bot.fetch_channel(sch_channel_id)
             if not isinstance(channel, discord.TextChannel):
-                logger.error(f"Invalid channel ID {channel_id} for scheduled message")
+                logger.error(f"Invalid channel ID {sch_channel_id} for scheduled message")
                 continue
             
             # Validate timezone
             try:
-                tz = pytz.timezone(timezone_str)
+                tz = pytz.timezone(sch_timezone_str)
             except pytz.exceptions.UnknownTimeZoneError:
-                logger.error(f"Invalid timezone {timezone_str} for channel {channel_id}")
+                logger.error(f"Invalid timezone {sch_timezone_str} for channel {sch_channel_id}")
                 continue
             
             async def send_scheduled_message():
                 try:
                     await channel.send(message) # type: ignore
-                    logger.info(f"Sent scheduled message to channel {channel_id}: {message}")
+                    logger.info(f"Sent scheduled message to channel {sch_channel_id}: {sch_message}")
                 except Exception as e:
-                    logger.error(f"Failed to send scheduled message to {channel_id}: {e}")
+                    logger.error(f"Failed to send scheduled message to {sch_channel_id}: {e}")
             
             scheduler.add_job(
                 send_scheduled_message,
-                trigger=CronTrigger.from_crontab(cron_schedule, timezone=tz),  # Use local timezone
-                id=f"scheduled_message_{channel_id}_{hash(message)}",
+                trigger=CronTrigger.from_crontab(sch_cron_schedule, timezone=tz),  # Use local timezone
+                id=f"scheduled_message_{sch_channel_id}_{hash(sch_message)}",
                 replace_existing=True
             )
-            logger.info(f"Scheduled message for channel {channel_id}: {message} with cron {cron_schedule} in {timezone_str}")
+            logger.info(f"Scheduled message for channel {sch_channel_id}: {sch_message} with cron {sch_cron_schedule} in {sch_timezone_str}")
         except Exception as e:
-            logger.error(f"Failed to schedule message for channel {channel_id}: {e}")
+            logger.error(f"Failed to schedule message for channel {sch_channel_id}: {e}")
 
     # check for clean shutdown
     state = load_state()
