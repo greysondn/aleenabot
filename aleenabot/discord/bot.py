@@ -274,8 +274,19 @@ async def handle_server_output(line, discord_channel):
     ignored_patterns = [re.compile(p) for p in config.get("ignored_patterns", [])]
 
     # Custom death patterns from config
-    custom_death_patterns = [(name, re.compile(p)) for name, p in config.get("death_patterns", {}).items()]
-
+    custom_death_patterns = []
+    for name, p in config.get("death_patterns", {}).items():
+        try:
+            if not isinstance(p, dict) or "pattern" not in p:
+                logger.error(f"Invalid death pattern for {name}: expected dict with 'pattern' key, got {p}")
+                continue
+            custom_death_patterns.append((name, re.compile(p["pattern"])))
+            logger.debug(f"Loaded death pattern {name}: {p['pattern']}")
+        except re.error as e:
+            logger.error(f"Invalid regex in death pattern {name}: {e}")
+        except Exception as e:
+            logger.error(f"Failed to load death pattern {name}: {e}")
+    
     with database.atomic():
         # Check ignored patterns first
         if any(p.search(line) for p in ignored_patterns):
