@@ -243,10 +243,16 @@ async def handle_server_output(line, discord_channel):
     global active_players, last_player_activity
     logger.info(f"Server: {line}")
 
-    # Ensure line is a string
+    # Check line and discord_channel
     if not isinstance(line, str):
         logger.error(f"Non-string line received: {line} (type: {type(line)})")
         unrecognized_logger.debug(f"Unrecognized server output: {line}")
+        return
+    if not line.strip():  # Skip empty lines
+        logger.debug("Skipping empty line")
+        return
+    if not isinstance(discord_channel, discord.TextChannel):
+        logger.error(f"Invalid discord_channel: {discord_channel} (type: {type(discord_channel)})")
         return
 
     # Regex patterns
@@ -298,27 +304,26 @@ async def handle_server_output(line, discord_channel):
                     obj=groups.get("details", None),
                     discord_channel=discord_channel
                 )
-            elif any((match := p.search(line)) for _, p in custom_death_patterns):
-                groups = match.groupdict() # type: ignore
-                await handle_death(
-                    line,
-                    name=groups.get("name", "unknown"),
-                    cause=groups.get("cause", "none"),
-                    source=groups.get("source", None),
-                    indirectSource=groups.get("indirectsource", None),
-                    obj=groups.get("details", None),
-                    discord_channel=discord_channel
-                )
-            elif match := system_item_pattern.search(line):
-                action, data = match.groups()
-                await handle_system_item(line, action, data, discord_channel)
-            elif match := action_pattern.search(line):
-                player = match.group(1)
-                await handle_action()
             else:
-                unrecognized_logger.debug(f"Unrecognized server output: {line}")
+                # Process custom death patterns safely
+                for name, pattern in custom_death_patterns:
+                    if match := pattern.search(line):
+                        groups = match.groupdict()
+                        logger.debug(f"Custom death match for pattern '{name}': {groups}")
+                        await handle_death(
+                            line,
+                            name=groups.get("name", "unknown"),
+                            cause=groups.get("cause", "none"),
+                            source=groups.get("source", None),
+                            indirectSource=groups.get("indirectsource", None),
+                            obj=groups.get("details", None),
+                            discord_channel=discord_channel
+                        )
+                        break
+                else:
+                    unrecognized_logger.debug(f"Unrecognized server output: {line}")
         except Exception as e:
-            logger.error(f"Error handling server output '{line}': {e}")
+            logger.error(f"Error handling server output '{line}': {e}", exc_info=True)
 
 
 
@@ -419,9 +424,9 @@ async def read_stream(stream, callback):
                 line = ansi_escape.sub('', line).strip()
                 await callback(line)
             except Exception as e:
-                logger.error(f"Error processing line '{line}': {e}")
+                logger.error(f"Error processing line '{line}': {e}", exc_info=True)
     except Exception as e:
-        logger.error(f"Error reading stream: {e}")
+        logger.error(f"Error reading stream: {e}", exc_info=True)
 
 # TODO: Fix Logic
 async def start_server(discord_channel, instance_name="default"):
