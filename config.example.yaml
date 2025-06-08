@@ -12,8 +12,17 @@ database:
 instances:
   default:
     server_dir: "/home/your_username/minecraft_server"
+    java_path: none
+    sync_script: none
+    script: "/home/user/minecraft/1.20.1-permanence/run.sh"  # Use shell script
+    mmm: none
+    jar: none
+    args: []
+  modpack2:
+    server_dir: "/home/your_username/minecraft_server"
     java_path: "/usr/lib/jvm/java-17-openjdk/bin/java"
     sync_script: "/home/your_username/minecraft_wrapper/sync_default.py"
+    script: none
     mmm: "/home/your_username/minecraft_wrapper/mmm_default"
     jar: "server.jar"
     args:
@@ -21,18 +30,6 @@ instances:
       - "-Xms2G"
       - "-jar"
       - "server.jar"
-      - "nogui"
-  modpack2:
-    server_dir: "/home/your_username/minecraft_server"
-    java_path: "/usr/lib/jvm/java-21-openjdk/bin/java"
-    sync_script: "/home/your_username/minecraft_wrapper/sync_modpack2.py"
-    mmm: "/home/your_username/minecraft_wrapper/mmm_modpack2"
-    jar: "modpack2.jar"
-    args:
-      - "-Xmx6G"
-      - "-Xms4G"
-      - "-jar"
-      - "modpack2.jar"
       - "nogui"
 ignored_patterns:
   - "\\[Server thread/INFO\\]: \\[minecraft/Server\\]: Saving the game.*"
