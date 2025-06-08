@@ -456,7 +456,7 @@ async def start_server(discord_channel, instance_name="default"):
     java_path = instance.get("java_path", "java")
     sync_script = instance.get("sync_script", None)
     mmm_script = instance.get("mmm", None)
-    server_jar = instance["jar"]
+    server_jar = instance["jar", None]
     launch_script = instance.get("script")
     server_args = instance.get("args", [])
     
