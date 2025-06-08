@@ -692,7 +692,7 @@ async def on_ready():
             dUser = DiscordUser.get_or_create(user=user, accountid = admin_accountID)[0]
             permissionGrant = Permissions.get_or_create(user=user, permission=permission, active=True, datetime=getCurrentUTCTime(), reason="Granted via config file")
 
-# Initialize scheduler
+    # Initialize scheduler
     scheduler = AsyncIOScheduler(timezone=pytz.UTC)
     scheduler.start()
     logger.info("Scheduler started")
