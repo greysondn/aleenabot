@@ -12,6 +12,8 @@ import sys
 import time
 import yaml
 
+from .helpers import BotLogger
+
 from ..database.database import db as database
 from ..database.database import initDB
 
@@ -44,17 +46,9 @@ from peewee import fn
 from peewee import JOIN
 
 # Set up logging with rotation
-handler = logging.handlers.RotatingFileHandler("aleena.log", maxBytes=10*1024*1024, backupCount=5)
-unrecognized_handler = logging.handlers.RotatingFileHandler("unrecognized_server_output.log", maxBytes=1*1024*1024, backupCount=5)
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), handler, unrecognized_handler]
-)
-logger = logging.getLogger(__name__)
-unrecognized_logger = logging.getLogger("unrecognized")
-unrecognized_handler.setLevel(logging.DEBUG)
-unrecognized_logger.addHandler(unrecognized_handler)
+logs                = BotLogger()
+logger              = logs.logger
+unrecognized_logger = logs.unrecognized_logger
 
 # Load config from YAML
 CONFIG_PATH = Path(__file__).parent / ".." / ".."/ "config.yaml"
