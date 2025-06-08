@@ -3,8 +3,6 @@ import asyncio
 import asyncio.subprocess
 import discord
 import json
-import logging
-import logging.handlers
 import pytz
 import re
 import subprocess
