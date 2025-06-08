@@ -44,7 +44,7 @@ from peewee import fn
 from peewee import JOIN
 
 # Set up logging with rotation
-handler = logging.handlers.RotatingFileHandler("minecraft_wrapper.log", maxBytes=10*1024*1024, backupCount=5)
+handler = logging.handlers.RotatingFileHandler("aleena.log", maxBytes=10*1024*1024, backupCount=5)
 unrecognized_handler = logging.handlers.RotatingFileHandler("unrecognized_server_output.log", maxBytes=1*1024*1024, backupCount=5)
 logging.basicConfig(
     level=logging.DEBUG,
@@ -55,8 +55,6 @@ logger = logging.getLogger(__name__)
 unrecognized_logger = logging.getLogger("unrecognized")
 unrecognized_handler.setLevel(logging.DEBUG)
 unrecognized_logger.addHandler(unrecognized_handler)
-
-
 
 # Load config from YAML
 CONFIG_PATH = Path(__file__).parent / ".." / ".."/ "config.yaml"
@@ -340,8 +338,6 @@ async def handle_server_output(line, discord_channel):
         except Exception as e:
             logger.error(f"Error handling server output '{line}': {e}", exc_info=True)
 
-
-
 # ------------------------------------------------------------------------------
 # Minecraft server binary helpers
 # ------------------------------------------------------------------------------
@@ -446,7 +442,11 @@ async def read_stream(stream, callback):
 # TODO: Fix Logic
 async def start_server(discord_channel, instance_name="default"):
     """Start the Minecraft server after running sync and mmm."""
-    global server_process, server_running, last_player_activity, current_instance
+    global current_instance
+    global last_player_activity
+    global server_process
+    global server_running
+    
     if server_running:
         await discord_channel.send("Server is already running!")
         return
@@ -454,10 +454,12 @@ async def start_server(discord_channel, instance_name="default"):
     instance = INSTANCES.get(instance_name)
     server_dir = Path(instance["server_dir"])  # Instance-specific
     java_path = instance.get("java_path", "java")
-    sync_script = instance.get("sync_script", "sync.py")
-    mmm_script = instance.get("mmm", "mmm")
+    sync_script = instance.get("sync_script", None)
+    mmm_script = instance.get("mmm", None)
     server_jar = instance["jar"]
-    server_args = instance.get("args", ["-Xmx4G", "-Xms2G", "-jar", server_jar, "nogui"])
+    launch_script = instance.get("script")
+    server_args = instance.get("args", [])
+    
     current_instance = instance_name
 
     # Ensure server_dir exists
@@ -466,27 +468,49 @@ async def start_server(discord_channel, instance_name="default"):
         logger.error(f"Server directory {server_dir} does not exist")
         return
 
-    # TODO: enable below blocks, holy shit dude
+    # Run sync script if specified
+    if sync_script and sync_script != "null":
+        if not await run_sync_script(sync_script):
+            await discord_channel.send("Sync script failed, aborting server start.")
+            logger.error("Aborting server start due to sync script failure")
+            return
 
-    # if not await run_sync_script(sync_script):
-    #    await discord_channel.send("Sync script failed, aborting server start.")
-    #    logger.error("Aborting server start due to sync script failure")
-    #    return
-
-    # if not await run_mmm(mmm_script):
-    #    await discord_channel.send("mmm script failed, aborting server start.")
-    #    logger.error("Aborting server start due to mmm failure")
-    #    return
+    # Run mmm script if specified
+    if mmm_script and mmm_script != "null":
+        if not await run_mmm(mmm_script):
+            await discord_channel.send("mmm script failed, aborting server start.")
+            logger.error("Aborting server start due to mmm failure")
+            return
 
     try:
-        server_process = await asyncio.create_subprocess_exec(
-            java_path,
-            *server_args,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=server_dir
-        )
+        if launch_script and launch_script != "null":
+            # Launch via shell script
+            if not Path(launch_script).exists():
+                await discord_channel.send(f"Launch script {launch_script} does not exist!")
+                logger.error(f"Launch script {launch_script} does not exist")
+                return
+            server_process = await asyncio.create_subprocess_exec(
+                "/bin/sh",
+                launch_script,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=server_dir
+            )
+            logger.info(f"Started server via script {launch_script} (instance: {instance_name})")
+        else:
+            # Launch via Java
+            server_process = await asyncio.create_subprocess_exec(
+                java_path,
+                *server_args,
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=server_dir
+            )
+            logger.info(f"Started server via Java command (instance: {instance_name})")
+        
+        
         if server_process.returncode is not None:
             server_running = False
             server_process = None
