@@ -2,15 +2,16 @@
 import asyncio
 import asyncio.subprocess
 import discord
-import json
+import logging
 import pytz
 import re
 import subprocess
 import sys
 import time
-import yaml
 
 from .helpers import BotLogger
+from .helpers import getCurrentUTCTime
+from .state import State
 
 from ..database.database import db as database
 from ..database.database import initDB
@@ -34,63 +35,26 @@ from ..database.database import MinecraftUserAdvancement
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from datetime import datetime
-from datetime import timezone
 from discord.ext import commands
 from discord.ext.commands import cooldown
 from discord.ext.commands import BucketType
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from peewee import fn
-from peewee import JOIN
+from typing import cast
 
 # Set up logging with rotation
-logs                = BotLogger()
-logger              = logs.logger
-unrecognized_logger = logs.unrecognized_logger
+BotLogger()
+logger              = logging.getLogger(__name__)
+unrecognized_logger = logging.getLogger("unrecognized")
 
-# Load config from YAML
-CONFIG_PATH = Path(__file__).parent / ".." / ".."/ "config.yaml"
-try:
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
-except Exception as e:
-    logger.error(f"Failed to load config.yaml: {e}")
-    sys.exit(1)
-
-# Config variables
-DISCORD_TOKEN = config["discord_token"]
-DISCORD_CHANNEL_ID = config["discord_channel_id"]
-DEFAULT_ADMIN_ID = config["default_admin_id"]
-IDLE_TIMEOUT = config.get("idle_timeout", 300)
-DB_CONFIG = config["database"]
-INSTANCES = config["instances"]
-ITEMS_PER_PAGE = config.get("items_per_page", 5)
-STATE_FILE = Path(__file__).parent / "bot_state.json"
-SCHEDULED_MESSAGES = config.get("scheduled_messages", [])
-
-# globals
-server_process = None
-server_running = False
-active_players = set()
-last_player_activity = None
-current_instance = None
+# initialize state
+bot_state = State()
+bot_state.loadFromConfig(Path(__file__).parent / ".." / ".."/ "config.yaml")
 
 # Discord bot setup
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# ------------------------------------------------------------------------------
-# Generic Helpers
-# ------------------------------------------------------------------------------
-def getCurrentUTCTime() -> str:
-    ret = ""
-    
-    swp = datetime.now()
-    swp = swp.replace(tzinfo=timezone.utc)
-    ret = swp.strftime('%Y-%m-%d %H:%M:%S.%f')
-    
-    return ret
 
 # ------------------------------------------------------------------------------
 # Database Helpers
@@ -112,17 +76,16 @@ def minecraftNameToUser(name:str):
 
 async def inputToMinecraftConsole(message, discord_channel):
     """Send as input to minecraft console whatever this message is"""
-    global server_process
-    global server_running
+    global bot_state
     
     # make sure server is running
-    if ((not server_running) or (server_process is None)):
+    if ((not bot_state.server_running) or (bot_state.server_process is None)):
         raise Exception("Server is not running!")
     
     # actually try sending message
     try:
-        server_process.stdin.write(f"{message}\n".encode("utf-8")) #type: ignore
-        await server_process.stdin.drain() #type: ignore
+        bot_state.server_process.stdin.write(f"{message}\n".encode("utf-8")) #type: ignore
+        await bot_state.server_process.stdin.drain() #type: ignore
         logger.info(f"Sent to server: {message}")
     except Exception as e:
         await discord_channel.send(f"Error sending message: {str(e)}")
@@ -133,27 +96,11 @@ async def inputToMinecraftConsole(message, discord_channel):
 # Minecraft server output helpers
 # ------------------------------------------------------------------------------
 
-async def handle_action():
-    """Fires when a player does something, no matter what, on the server, that
-       active interaction."""
-    global last_player_activity
-    last_player_activity = time.time()
-    save_state()
-
-async def activate_player(player):
-    global active_players
-    active_players.add(player)
-    await handle_action()
-    save_state()
-
-async def deactivate_player(player):
-    global active_players
-    active_players.discard(player)
-    save_state()
-
 async def handle_chat(player, message, discord_channel):
     """Handle chat messages and in-game commands."""
-    await handle_action()
+    global bot_state
+    
+    await bot_state.handle_action()
     
     user = minecraftNameToUser(player)
     
@@ -170,7 +117,9 @@ async def send_to_server(msg):
 
 async def handle_join(player, discord_channel):
     """Handle player join events."""
-    await activate_player(player)
+    global bot_state
+    
+    await bot_state.activate_player(player)
     
     await discord_channel.send(f"**{player} joined the game**")
     
@@ -178,7 +127,8 @@ async def handle_join(player, discord_channel):
 
 async def handle_leave(line, player, discord_channel):
     """Handle player leave events."""
-    await deactivate_player(player)
+    global bot_state
+    await bot_state.deactivate_player(player)
     await discord_channel.send(f"**{player} left the game**")
 
 async def handle_system_item(line, action, data, discord_channel):
@@ -195,7 +145,7 @@ async def handle_death(line, name, cause, source, indirectSource, obj, discord_c
 
     # Resolve instance
     global current_instance
-    mcInstance = MinecraftInstance.get_or_create(name=current_instance or "default")[0]
+    mcInstance = MinecraftInstance.get_or_create(name=bot_state.current_instance or "default")[0]
 
     # Resolve user
     mcUser = minecraftNameToMinecraftUser(name)
@@ -234,7 +184,8 @@ async def handle_death(line, name, cause, source, indirectSource, obj, discord_c
 
 async def handle_server_output(line, discord_channel):
     """Handle server output, parsing chat, advancements, items, deaths."""
-    global active_players, last_player_activity
+    global bot_state
+    
     logger.info(f"Server: {line}")
 
     # Check line and discord_channel
@@ -261,11 +212,11 @@ async def handle_server_output(line, discord_channel):
     action_pattern = re.compile(r"\[Server thread/INFO\]: (\S+) (placed|mined|broke|used|crafted).+")
 
     # Ignored patterns from config
-    ignored_patterns = [re.compile(p) for p in config.get("ignored_patterns", [])]
+    ignored_patterns = [re.compile(p) for p in bot_state.config.get("ignored_patterns", [])]
 
     # Custom death patterns from config
     custom_death_patterns = []
-    for name, p in config.get("death_patterns", {}).items():
+    for name, p in bot_state.config.get("death_patterns", {}).items():
         try:
             if not isinstance(p, dict) or "pattern" not in p:
                 logger.error(f"Invalid death pattern for {name}: expected dict with 'pattern' key, got {p}")
@@ -335,12 +286,11 @@ async def handle_server_output(line, discord_channel):
 # ------------------------------------------------------------------------------
 async def check_idle_shutdown(discord_channel):
     """Check for idle server and shut down after timeout."""
-    global last_player_activity
-    global server_running
+    global bot_state
     
-    while server_running:
-        if (time.time() - last_player_activity) > IDLE_TIMEOUT: # type: ignore
-            await discord_channel.send(f"No players active for {IDLE_TIMEOUT} seconds, shutting down...")
+    while bot_state.server_running:
+        if ((time.time() - bot_state.last_player_activity) > bot_state.idle_timeout): # type: ignore
+            await discord_channel.send(f"No players active for {bot_state.idle_timeout} seconds, shutting down...")
             logger.info(f"Idle timeout reached, shutting down server")
             await stop_server(discord_channel)
             break
@@ -434,16 +384,13 @@ async def read_stream(stream, callback):
 # TODO: Fix Logic
 async def start_server(discord_channel, instance_name="default"):
     """Start the Minecraft server after running sync and mmm."""
-    global current_instance
-    global last_player_activity
-    global server_process
-    global server_running
+    global bot_state
     
-    if server_running:
+    if (bot_state.server_running):
         await discord_channel.send("Server is already running!")
         return
 
-    instance = INSTANCES.get(instance_name)
+    instance = cast(dict, bot_state.instances.get(instance_name))
     server_dir = Path(instance["server_dir"])  # Instance-specific
     java_path = instance.get("java_path", "java")
     sync_script = instance.get("sync_script", None)
@@ -452,7 +399,7 @@ async def start_server(discord_channel, instance_name="default"):
     launch_script = instance.get("script")
     server_args = instance.get("args", [])
     
-    current_instance = instance_name
+    bot_state.current_instance = instance_name # type: ignore
 
     # Ensure server_dir exists
     if not server_dir.exists():
@@ -504,39 +451,39 @@ async def start_server(discord_channel, instance_name="default"):
         
         
         if server_process.returncode is not None:
-            server_running = False
-            server_process = None
+            bot_state.server_running = False
+            bot_state.server_process = None
             await discord_channel.send("Server failed to start (process died).")
             logger.error("Server process died immediately")
             return
         
-        server_running = True
-        last_player_activity = time.time()
-        save_state()
+        bot_state.server_running = True
+        bot_state.last_player_activity = time.time()
+        bot_state.save()
         await discord_channel.send(f"Minecraft server started (instance: {instance_name})!")
         logger.info(f"Server started (instance: {instance_name})")
 
-        asyncio.create_task(read_stream(server_process.stdout, lambda line: handle_server_output(line, discord_channel)))
-        asyncio.create_task(read_stream(server_process.stderr, lambda line: handle_server_output(line, discord_channel)))
+        asyncio.create_task(read_stream(bot_state.server_process.stdout, lambda line: handle_server_output(line, discord_channel))) # type: ignore
+        asyncio.create_task(read_stream(bot_state.server_process.stderr, lambda line: handle_server_output(line, discord_channel))) # type: ignore
         asyncio.create_task(check_idle_shutdown(discord_channel))
 
-        await server_process.wait()
-        server_running = False
-        clear_state()
+        await bot_state.server_process.wait() # type: ignore
+        bot_state.server_running = False
+        bot_state.clear()
         await discord_channel.send("Minecraft server stopped.")
         logger.info("Server stopped")
 
     except Exception as e:
-        server_running = False
-        server_process = None
+        bot_state.server_running = False
+        bot_state.server_process = None
         await discord_channel.send(f"Failed to start server: {str(e)}")
         logger.error(f"Failed to start server: {e}")
 
 # TODO: Fix Logic
 async def stop_server(discord_channel):
     """Stop the Minecraft server gracefully."""
-    global server_process, server_running, current_instance
-    if not server_running or server_process is None:
+    global bot_state
+    if not bot_state.server_running or bot_state.server_process is None:
         await discord_channel.send("Server is not running!")
         return
 
@@ -545,7 +492,7 @@ async def stop_server(discord_channel):
         await discord_channel.send("Sent stop command to server...")
         logger.info("Sent stop command")
         try:
-            return_code = await asyncio.wait_for(server_process.wait(), timeout=30)
+            return_code = await asyncio.wait_for(bot_state.server_process.wait(), timeout=600)
             if return_code == 0:
                 await discord_channel.send("Server stopped gracefully (exit code 0).")
                 logger.info("Server stopped gracefully (exit code 0)")
@@ -553,62 +500,23 @@ async def stop_server(discord_channel):
                 await discord_channel.send(f"Server stopped with error (exit code {return_code}).")
                 logger.warning(f"Server stopped with error (exit code {return_code})")
         except asyncio.TimeoutError:
-            server_process.terminate()
+            bot_state.server_process.terminate()
             try:
-                await asyncio.wait_for(server_process.wait(), timeout=5)
+                await asyncio.wait_for(bot_state.server_process.wait(), timeout=5)
                 await discord_channel.send("Server terminated after timeout.")
                 logger.warning("Server terminated after timeout")
             except asyncio.TimeoutError:
-                server_process.kill()
+                bot_state.server_process.kill()
                 await discord_channel.send("Server forcefully killed.")
                 logger.warning("Server forcefully killed")
     except Exception as e:
         await discord_channel.send(f"Error stopping server: {str(e)}")
         logger.error(f"Error stopping server: {e}")
     finally:
-        server_running = False
-        server_process = None
-        current_instance = None
-        clear_state()
-
-# ------------------------------------------------------------------------------
-# state helpers
-# ------------------------------------------------------------------------------
-def save_state():
-    """Save bot state to state.json."""
-    state = {
-        "server_running": server_running,
-        "current_instance": current_instance,
-        "active_players": list(active_players),
-        "last_player_activity": last_player_activity,
-        "timestamp": getCurrentUTCTime()
-    }
-    try:
-        with open(STATE_FILE, "w") as f:
-            json.dump(state, f, indent=2)
-        logger.debug(f"Saved state to {STATE_FILE}")
-    except Exception as e:
-        logger.error(f"Failed to save state: {e}")
-
-def load_state():
-    """Load state.json, return None if missing."""
-    try:
-        if STATE_FILE.exists():
-            with open(STATE_FILE, "r") as f:
-                return json.load(f)
-        return None
-    except Exception as e:
-        logger.error(f"Failed to load state: {e}")
-        return None
-
-def clear_state():
-    """Clear state.json on graceful shutdown."""
-    try:
-        if STATE_FILE.exists():
-            STATE_FILE.unlink()
-            logger.info(f"Cleared state file {STATE_FILE}")
-    except Exception as e:
-        logger.error(f"Failed to clear state: {e}")
+        bot_state.server_running = False
+        bot_state.server_process = None
+        bot_state.current_instance = None
+        bot_state.clear()
 
 # ------------------------------------------------------------------------------
 # Permission Helpers
@@ -661,31 +569,26 @@ async def on_ready():
     logger.info(f"Bot logged in as {bot.user}")
     
     # local hook globals
-    global server_running
-    global server_process
-    global active_players
-    global last_player_activity
-    global current_instance
-    
+    global bot_state
     
     # try to grab admin data
-    admin_account = await(bot.fetch_user(DEFAULT_ADMIN_ID))
+    admin_account = await(bot.fetch_user(bot_state.default_admin_id))
     admin_accountID = admin_account.id
     admin_name = admin_account.global_name
     admin_displayName = admin_account.display_name
     
     # try to access channel
-    channel = bot.get_channel(DISCORD_CHANNEL_ID)
+    channel = bot.get_channel(bot_state.discord_channel_id)
     if (channel is None):
-        channel = await bot.fetch_channel(DISCORD_CHANNEL_ID)
+        channel = await bot.fetch_channel(bot_state.discord_channel_id)
     
     if not channel:
-        logger.error(f"Cannot access Discord channel {DISCORD_CHANNEL_ID}")
+        logger.error(f"Cannot access Discord channel {bot_state.discord_channel_id}")
         sys.exit(1)
         
     # init and hook database
     try:
-        initDB("mysql", DB_CONFIG)
+        initDB("mysql", bot_state.db_config)
         with database.atomic():
             logger.info("Connected to MariaDB")
     except Exception as e:
@@ -714,7 +617,7 @@ async def on_ready():
     logger.info("Scheduler started")
     
     # Schedule weekly messages from config
-    for sch_msg_config in SCHEDULED_MESSAGES:
+    for sch_msg_config in bot_state.scheduled_messages:
         try:
             sch_channel_id = int(sch_msg_config["channel_id"])
             message = sch_msg_config["message"]
@@ -755,7 +658,7 @@ async def on_ready():
         logger.debug(f"Job {job.id}: next run at {job.next_run_time}")
 
     # check for clean shutdown
-    state = load_state()
+    state = bot_state.load()
     if state and state.get("server_running"):
         logger.warning("Detected potential crash: server_running=True in state.json")
         pid = None
@@ -774,12 +677,12 @@ async def on_ready():
                     logger.warning(f"Killed lingering Java process (PID {pid})")
             except Exception as e:
                 logger.error(f"Failed to stop Java process: {e}")
-        server_running = False
-        server_process = None
-        active_players = set()
-        last_player_activity = None
-        current_instance = None
-        clear_state()
+        bot_state.server_running = False
+        bot_state.server_process = None
+        bot_state.active_players = set()
+        bot_state.last_player_activity = None
+        bot_state.current_instance = None
+        bot_state.clear()
         await channel.send("Detected crash (server was running). Cleaned up state.") # type: ignore
     else:
         logger.info("No crash detected, starting fresh")
@@ -789,12 +692,13 @@ async def on_ready():
 @bot.command()
 @cooldown(1, 10, BucketType.user)
 async def startserver(ctx, instance_name="[none given]"):
+    global bot_state
     """Start the server with specified instance."""
     if not hasPermissionDiscord(str(ctx.author.id), "bot:command:startserver"):
         await ctx.send("You don't have permission!")
         return
-    if instance_name not in INSTANCES:
-        await ctx.send(f"Unknown instance: {instance_name}. Available: {', '.join(INSTANCES.keys())}")
+    if instance_name not in bot_state.instances:
+        await ctx.send(f"Unknown instance: {instance_name}. Available: {', '.join(bot_state.instances.keys())}")
         return
     await start_server(ctx.channel, instance_name)
 
@@ -1254,7 +1158,7 @@ async def help(ctx):
 '''
 
 def main():
-    global DISCORD_TOKEN
+    global bot_state
     
     # Run the bot
-    bot.run(DISCORD_TOKEN)
+    bot.run(bot_state.discord_token)

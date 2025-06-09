@@ -1,5 +1,8 @@
 import logging
 import logging.handlers
+
+from datetime import datetime
+from datetime import timezone
 from typing import cast
 
 class BotLogger():
@@ -27,9 +30,16 @@ class BotLogger():
             
             logger.info("Initialized logging")
             
-            BotLogger.logger = logger
             BotLogger.unrecognized_logger = unrecognized_logger
             BotLogger.inited = True
             
-        self.logger = BotLogger.logger
         self.unrecognized_logger = BotLogger.unrecognized_logger
+        
+def getCurrentUTCTime() -> str:
+    ret = ""
+    
+    swp = datetime.now()
+    swp = swp.replace(tzinfo=timezone.utc)
+    ret = swp.strftime('%Y-%m-%d %H:%M:%S.%f')
+    
+    return ret
