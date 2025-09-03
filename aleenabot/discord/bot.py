@@ -144,7 +144,6 @@ async def handle_death(line, name, cause, source, indirectSource, obj, discord_c
             return
 
     # Resolve instance
-    global current_instance
     mcInstance = MinecraftInstance.get_or_create(name=bot_state.current_instance or "default")[0]
 
     # Resolve user
@@ -428,7 +427,7 @@ async def start_server(discord_channel, instance_name="default"):
                 await discord_channel.send(f"Launch script {launch_script} does not exist!")
                 logger.error(f"Launch script {launch_script} does not exist")
                 return
-            server_process = await asyncio.create_subprocess_exec(
+            bot_state.server_process = await asyncio.create_subprocess_exec(
                 "/bin/sh",
                 launch_script,
                 stdin=asyncio.subprocess.PIPE,
@@ -439,7 +438,7 @@ async def start_server(discord_channel, instance_name="default"):
             logger.info(f"Started server via script {launch_script} (instance: {instance_name})")
         else:
             # Launch via Java
-            server_process = await asyncio.create_subprocess_exec(
+            bot_state.server_process = await asyncio.create_subprocess_exec(
                 java_path,
                 *server_args,
                 stdin=asyncio.subprocess.PIPE,
@@ -450,7 +449,7 @@ async def start_server(discord_channel, instance_name="default"):
             logger.info(f"Started server via Java command (instance: {instance_name})")
         
         
-        if server_process.returncode is not None:
+        if bot_state.server_process.returncode is not None:
             bot_state.server_running = False
             bot_state.server_process = None
             await discord_channel.send("Server failed to start (process died).")
@@ -739,10 +738,7 @@ async def on_message(message):
 @bot.command()
 @cooldown(1, 5, BucketType.user)
 async def exec(ctx, message):
-    """Send a message to the server."""
-    global server_process
-    global server_running
-    
+    """Send a message to the server."""    
     # keep track of whether we had an error
     hadError = False
     

@@ -7,6 +7,7 @@ import yaml
 from .helpers import BotLogger
 from .helpers import getCurrentUTCTime
 
+from asyncio.subprocess import Process
 from typing import cast
 from pathlib import Path
 
@@ -25,7 +26,7 @@ class State():
         self.scheduled_messages = []
         self.config = {}
         
-        self.server_process = None
+        self.server_process:None|Process = None
         self.server_running = False
         self.active_players = set()
         self.last_player_activity = None
