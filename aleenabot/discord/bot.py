@@ -709,7 +709,7 @@ async def startserver(ctx, instance_name="[none given]"):
 @cooldown(1, 10, BucketType.user)
 async def stopserver(ctx):
     """Stop the server."""
-    if hasPermission(ctx.author.id, "bot.cmd.stopserver"):
+    if hasPermissionDiscord(str(ctx.author.id), "bot:command:stopserver"):
         await ctx.send("You don't have permission")
         return
     await stop_server(ctx.channel)
