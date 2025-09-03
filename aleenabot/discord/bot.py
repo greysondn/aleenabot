@@ -465,7 +465,9 @@ async def start_server(discord_channel, instance_name="default"):
 
         asyncio.create_task(read_stream(bot_state.server_process.stdout, lambda line: handle_server_output(line, discord_channel))) # type: ignore
         asyncio.create_task(read_stream(bot_state.server_process.stderr, lambda line: handle_server_output(line, discord_channel))) # type: ignore
-        asyncio.create_task(check_idle_shutdown(discord_channel))
+        # TODO: Implement idle shutdown correctly and enable it
+        #       Hint: You need enough parsing to see if players are active or not
+        # asyncio.create_task(check_idle_shutdown(discord_channel))
 
         await bot_state.server_process.wait() # type: ignore
         bot_state.server_running = False
